@@ -19,8 +19,6 @@ const RPC_ERRORS = {
   duplicate_code: { messageKey: 'err_code_duplicate', fieldErrors: { code: 'err_code_duplicate' } },
   invalid_code: { fieldErrors: { code: 'err_code_format' } },
   invalid_spots: { fieldErrors: { remainingSpots: 'err_spots_range' } },
-  description_too_long: { fieldErrors: { description: 'err_desc_too_long' } },
-  invalid_expiry: { fieldErrors: { expiresAt: 'err_expiry_invalid' } },
   rate_limited: { messageKey: 'err_rate_limited' },
   not_authorized: { messageKey: 'err_not_authorized' },
   already_claimed: { messageKey: 'err_already_claimed' },
@@ -185,9 +183,11 @@ class InviteCodeService {
 
     const { data, error: rpcError } = await client.rpc('publish_invite_code', {
       p_code: check.normalizedCode,
-      p_description: check.normalizedDescription,
+      // The database keeps these columns for legacy rows; the UI no longer
+      // collects notes or an expiry date.
+      p_description: '',
       p_remaining: check.normalizedSpots,
-      p_expires_at: check.normalizedExpiresAt,
+      p_expires_at: null,
       p_client_token: getVisitorToken()
     });
 

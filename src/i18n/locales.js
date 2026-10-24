@@ -32,11 +32,7 @@ export const LOCALES = {
     publish_code_placeholder: '输入邀请码 (如 DEMO-9NF4F6)',
     publish_spots_label: '剩余次数',
     publish_submit_btn: '立即分享',
-    publish_fill_sample: '填入示例',
     publish_demo_hint: '按入池先后排队，数据实时同步。',
-    publish_desc_label: '使用说明（可选）',
-    publish_desc_placeholder: '可选：兑换注意事项，最多 280 字',
-    publish_expiry_label: '有效期至（可选）',
     publish_success: '已入池排队：{code}（管理密钥已保存在本浏览器）',
 
     // 校验错误
@@ -45,8 +41,6 @@ export const LOCALES = {
     err_code_format: '仅支持字母、数字或连字符(-)',
     err_code_duplicate: '该邀请码已在池中',
     err_spots_range: '剩余次数需为 1–30',
-    err_desc_too_long: '使用说明最多 280 字',
-    err_expiry_invalid: '有效期需在未来 90 天内',
 
     // 网络与后端错误
     err_network: '网络连接失败，请检查网络后重试',
@@ -65,7 +59,7 @@ export const LOCALES = {
 
     // 邀请码列表
     list_title: '邀请码队列（早入池排在最上边）',
-    search_placeholder: '搜索邀请码或说明…',
+    search_placeholder: '搜索邀请码…',
     search_clear: '清除',
     filter_available: '可用',
     filter_expired: '已失效',
@@ -81,7 +75,6 @@ export const LOCALES = {
 
     card_spots: '剩余 {remaining}/{total} 次',
     card_spots_exhausted: '次数已用完 (0/{total})',
-    card_expires: '有效期至 {date}',
     card_copy: '复制',
     card_copied: '已复制',
     card_used_btn: '我已用(-1)',
@@ -136,11 +129,7 @@ export const LOCALES = {
     publish_code_placeholder: 'Enter invite code (e.g. DEMO-9NF4F6)',
     publish_spots_label: 'Uses left',
     publish_submit_btn: 'Add to Queue',
-    publish_fill_sample: 'Sample',
     publish_demo_hint: 'Ordered by entry time (FIFO). Data is shared in real time.',
-    publish_desc_label: 'Description (optional)',
-    publish_desc_placeholder: 'Optional note, up to 280 characters',
-    publish_expiry_label: 'Valid until (optional)',
     publish_success: 'Added to queue: {code} (management key saved in this browser)',
 
     // Errors
@@ -149,8 +138,6 @@ export const LOCALES = {
     err_code_format: 'Alphanumeric characters or hyphens (-) only',
     err_code_duplicate: 'This code is already in the queue',
     err_spots_range: 'Uses left must be between 1 and 30',
-    err_desc_too_long: 'Description must be 280 characters or fewer',
-    err_expiry_invalid: 'Choose a date within the next 90 days',
 
     err_network: 'Network error. Check your connection and try again.',
     err_rate_limited: 'Too many actions. Please try again later.',
@@ -168,7 +155,7 @@ export const LOCALES = {
 
     // Directory
     list_title: 'Invite Code Queue (Oldest First)',
-    search_placeholder: 'Search code or description…',
+    search_placeholder: 'Search code…',
     search_clear: 'Clear',
     filter_available: 'Available',
     filter_expired: 'Expired',
@@ -184,7 +171,6 @@ export const LOCALES = {
 
     card_spots: '{remaining}/{total} left',
     card_spots_exhausted: '0/{total} left (Exhausted)',
-    card_expires: 'Valid until {date}',
     card_copy: 'Copy',
     card_copied: 'Copied',
     card_used_btn: 'Used (-1)',

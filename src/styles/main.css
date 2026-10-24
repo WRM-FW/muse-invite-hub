@@ -8,11 +8,14 @@
    ========================================================================== */
 
 :root {
+  color-scheme: light dark;
+
   --bg-canvas: #F0F2F5;
   --bg-surface: #FFFFFF;
   --bg-subtle: #F7F8FA;
   --bg-hover: #F2F3F5;
   --bg-active: #E4E6EB;
+  --bg-active-hover: #D8DADF;
 
   --text-primary: #050505;
   --text-secondary: #4B4F56;
@@ -20,15 +23,19 @@
 
   --border-subtle: #E4E6EB;
   --border-strong: #CED0D4;
+  --border-hover: #8A8D91;
 
   --brand-primary: #0866FF;
   --brand-primary-hover: #0054E0;
   --brand-primary-soft: #E7F3FF;
   --brand-primary-text: #0051D5;
+  --brand-primary-soft-hover: #D6E9FF;
+  --brand-border: #B2D4FF;
 
   --status-available-bg: #EBF7EE;
   --status-available-text: #1B6E2D;
   --status-available-border: #B7E1C1;
+  --status-available-hover: #DDF2E2;
 
   --status-used-bg: #F0F2F5;
   --status-used-text: #4B4F56;
@@ -45,6 +52,13 @@
   --danger-text: #C91B2E;
   --danger-bg: #FFF0F2;
 
+  --toast-bg: #1C1E21;
+  --toast-error-bg: #7F1D1D;
+  --toast-success-text: #4ADE80;
+  --toast-error-text: #FCA5A5;
+  --skeleton-base: #E9EBEF;
+  --skeleton-shine: #F4F5F7;
+
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -56,6 +70,65 @@
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
     "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* 跟随系统深色模式；无需手动切换。 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --bg-canvas: #0B0D10;
+    --bg-surface: #151A21;
+    --bg-subtle: #1B212A;
+    --bg-hover: #222933;
+    --bg-active: #2A323D;
+    --bg-active-hover: #343D49;
+
+    --text-primary: #E8EAED;
+    --text-secondary: #B7BDC6;
+    --text-muted: #8B93A0;
+
+    --border-subtle: #2A313B;
+    --border-strong: #3B4552;
+    --border-hover: #586372;
+
+    --brand-primary: #2F6FED;
+    --brand-primary-hover: #4A82F5;
+    --brand-primary-soft: #16263D;
+    --brand-primary-text: #8AB6FF;
+    --brand-primary-soft-hover: #1D3352;
+    --brand-border: #2B5A96;
+
+    --status-available-bg: #102319;
+    --status-available-text: #6FE39A;
+    --status-available-border: #245536;
+    --status-available-hover: #163322;
+
+    --status-used-bg: #1B212A;
+    --status-used-text: #B7BDC6;
+    --status-used-border: #3B4552;
+
+    --status-expired-bg: #2A1216;
+    --status-expired-text: #FF8B9A;
+    --status-expired-border: #5A2430;
+
+    --warning-bg: #2A2111;
+    --warning-text: #F3C46A;
+    --warning-border: #5A4720;
+
+    --danger-text: #FF8B9A;
+    --danger-bg: #2A1216;
+
+    --toast-bg: #242C36;
+    --toast-error-bg: #5A1F27;
+    --toast-success-text: #6FE39A;
+    --toast-error-text: #FFB3BD;
+    --skeleton-base: #1B212A;
+    --skeleton-shine: #242C36;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.45);
+    --shadow-elevated: 0 10px 30px rgba(0, 0, 0, 0.6);
+  }
 }
 
 *,
@@ -71,6 +144,7 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  background-color: var(--bg-canvas);
 }
 
 body {
@@ -184,7 +258,7 @@ body {
 /* 随机抽码聚焦框 */
 .spotlight-pool-box {
   background-color: var(--bg-subtle);
-  border: 1.5px solid #B2D4FF;
+  border: 1.5px solid var(--brand-border);
   border-radius: var(--radius-md);
   padding: 20px;
   display: flex;
@@ -228,7 +302,7 @@ body {
 .code-pill.is-unavailable {
   text-decoration: line-through;
   color: var(--text-muted);
-  background-color: #F4F5F7;
+  background-color: var(--bg-subtle);
 }
 
 /* 30 名额可视化进度条 */
@@ -316,7 +390,7 @@ body {
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background-color: #D8DADF;
+  background-color: var(--bg-active-hover);
 }
 
 .btn-soft {
@@ -325,7 +399,7 @@ body {
 }
 
 .btn-soft:hover:not(:disabled) {
-  background-color: #D6E9FF;
+  background-color: var(--brand-primary-soft-hover);
 }
 
 .btn-success-soft {
@@ -335,7 +409,7 @@ body {
 }
 
 .btn-success-soft:hover:not(:disabled) {
-  background-color: #DDF2E2;
+  background-color: var(--status-available-hover);
 }
 
 .btn-outline {
@@ -369,7 +443,7 @@ body {
 }
 
 .input-field:hover {
-  border-color: #8A8D91;
+  border-color: var(--border-hover);
 }
 
 .input-field:focus {
@@ -419,10 +493,11 @@ body {
 }
 
 .toast-item {
-  background-color: #1C1E21;
+  background-color: var(--toast-bg);
   color: #FFFFFF;
   padding: 10px 16px;
   border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-elevated);
   font-size: 13.5px;
   font-weight: 500;
@@ -432,13 +507,18 @@ body {
 }
 
 .toast-item.is-error {
-  background-color: #7F1D1D;
+  background-color: var(--toast-error-bg);
 }
 
 /* 加载占位 */
 .skeleton {
   border-radius: 6px;
-  background: linear-gradient(90deg, #E9EBEF 25%, #F4F5F7 37%, #E9EBEF 63%);
+  background: linear-gradient(
+    90deg,
+    var(--skeleton-base) 25%,
+    var(--skeleton-shine) 37%,
+    var(--skeleton-base) 63%
+  );
   background-size: 400% 100%;
   animation: skeleton-shimmer 1.2s ease infinite;
 }

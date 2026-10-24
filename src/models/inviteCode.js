@@ -19,9 +19,6 @@ export const FILTER_STATUS = Object.freeze({
   EXPIRED: 'expired'
 });
 
-const MAX_DESCRIPTION_LENGTH = 280;
-const MAX_EXPIRY_DAYS = 90;
-
 export function resolveEffectiveStatus(record) {
   if (!record) return INVITE_STATUS.EXPIRED;
   if (record.status === INVITE_STATUS.EXPIRED) return INVITE_STATUS.EXPIRED;
@@ -60,27 +57,6 @@ export function validateInviteSubmission(input, existingRecords = []) {
     }
   }
 
-  const rawDescription = typeof input?.description === 'string' ? input.description : '';
-  const normalizedDescription = rawDescription.replace(/\s+/g, ' ').trim();
-  if (normalizedDescription.length > MAX_DESCRIPTION_LENGTH) {
-    errors.description = 'err_desc_too_long';
-  }
-
-  let normalizedExpiresAt = null;
-  if (input?.expiresAt) {
-    const parsed = new Date(input.expiresAt);
-    const now = Date.now();
-    if (
-      Number.isNaN(parsed.getTime()) ||
-      parsed.getTime() <= now + 60 * 1000 ||
-      parsed.getTime() > now + MAX_EXPIRY_DAYS * 24 * 60 * 60 * 1000
-    ) {
-      errors.expiresAt = 'err_expiry_invalid';
-    } else {
-      normalizedExpiresAt = parsed.toISOString();
-    }
-  }
-
   if (!rawCode) {
     errors.code = 'err_code_required';
   } else if (normalizedCode.length < 4 || normalizedCode.length > 48) {
@@ -100,8 +76,6 @@ export function validateInviteSubmission(input, existingRecords = []) {
     valid: Object.keys(errors).length === 0,
     errors,
     normalizedCode,
-    normalizedSpots: Number.isInteger(spots) && spots >= 1 && spots <= 30 ? spots : 30,
-    normalizedDescription,
-    normalizedExpiresAt
+    normalizedSpots: Number.isInteger(spots) && spots >= 1 && spots <= 30 ? spots : 30
   };
 }

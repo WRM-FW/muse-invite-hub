@@ -23,8 +23,6 @@ export class MuseInviteApp {
       form: {
         code: '',
         remainingSpots: '30',
-        description: '',
-        expiresAt: '',
         errors: {},
         lastSubmittedCode: null,
         submitting: false
@@ -127,8 +125,7 @@ export class MuseInviteApp {
         const statusMatch = filter === FILTER_STATUS.ALL ? true : record.status === filter;
         if (!statusMatch) return false;
         if (!q) return true;
-        const haystack = `${record.code || ''} ${record.description || ''}`.toLowerCase();
-        return haystack.includes(q);
+        return String(record.code || '').toLowerCase().includes(q);
       })
       .sort((a, b) => {
         // 在“全部”视图下可用排在前面，同状态严格按入池时间由早到晚 (created_at 升序)
@@ -297,9 +294,7 @@ export class MuseInviteApp {
 
     const payload = {
       code: this.state.form.code,
-      remainingSpots: this.state.form.remainingSpots,
-      description: this.state.form.description,
-      expiresAt: this.state.form.expiresAt ? this._dateToEndOfDayIso(this.state.form.expiresAt) : null
+      remainingSpots: this.state.form.remainingSpots
     };
 
     const check = validateInviteSubmission(payload, this.state.records);
@@ -331,8 +326,6 @@ export class MuseInviteApp {
     this.state.form = {
       code: '',
       remainingSpots: '30',
-      description: '',
-      expiresAt: '',
       errors: {},
       lastSubmittedCode: res.data.code,
       submitting: false
@@ -344,18 +337,6 @@ export class MuseInviteApp {
     this.pushToast(i18n.t('publish_success', { code: res.data.code }));
   }
 
-  fillSampleCodeToForm() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let random6 = '';
-    for (let i = 0; i < 6; i += 1) {
-      random6 += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    this.state.form.code = `DEMO-${random6}`;
-    this.state.form.remainingSpots = '30';
-    this.state.form.errors = {};
-    this.renderPublishSection();
-  }
-
   async handleRefresh() {
     this.state.loading = true;
     this.state.error = null;
@@ -364,20 +345,6 @@ export class MuseInviteApp {
     if (!this.state.error) {
       this.pushToast(i18n.t('refresh_done'));
     }
-  }
-
-  _dateToEndOfDayIso(dateStr) {
-    const parsed = new Date(`${dateStr}T23:59:59`);
-    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
-  }
-
-  _dateInputBounds() {
-    const pad = (n) => String(n).padStart(2, '0');
-    const toLocalDate = (date) =>
-      `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-    const now = new Date();
-    const max = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
-    return { min: toLocalDate(now), max: toLocalDate(max) };
   }
 
   scrollToSection(sectionId) {
@@ -465,10 +432,6 @@ export class MuseInviteApp {
           }
           break;
         }
-        case 'fill-sample-code':
-          e.preventDefault();
-          this.fillSampleCodeToForm();
-          break;
         default:
           break;
       }
@@ -495,18 +458,6 @@ export class MuseInviteApp {
         if (this.state.form.errors.remainingSpots || this.state.form.errors.form) {
           delete this.state.form.errors.remainingSpots;
           delete this.state.form.errors.form;
-          this.renderPublishSection();
-        }
-      } else if (target.id === 'publish-description-input') {
-        this.state.form.description = target.value;
-        if (this.state.form.errors.description) {
-          delete this.state.form.errors.description;
-          this.renderPublishSection();
-        }
-      } else if (target.id === 'publish-expiry-input') {
-        this.state.form.expiresAt = target.value;
-        if (this.state.form.errors.expiresAt) {
-          delete this.state.form.errors.expiresAt;
           this.renderPublishSection();
         }
       }
@@ -703,14 +654,6 @@ export class MuseInviteApp {
             ${this._escape(spotlight.code)}
           </div>
 
-          ${
-            spotlight.description
-              ? `<p style="margin:0 0 10px 0;font-size:12.5px;color:var(--text-secondary);line-height:1.5;">
-                  ${this._escape(spotlight.description)}
-                </p>`
-              : ''
-          }
-
           <div style="display:flex;align-items:center;justify-content:space-between;font-size:13px;margin-bottom:6px;">
             <span style="color:var(--status-available-text);font-weight:700;">
               ● ${this._escape(i18n.t('status_available'))}
@@ -725,19 +668,9 @@ export class MuseInviteApp {
             </span>
           </div>
 
-          <div class="quota-bar-track" style="margin-bottom:10px;">
+          <div class="quota-bar-track" style="margin-bottom:16px;">
             <div class="quota-bar-fill" style="width:${pct}%;background-color:var(--brand-primary);"></div>
           </div>
-
-          ${
-            spotlight.expires_at
-              ? `<p style="margin:0 0 12px 0;font-size:11.5px;color:var(--text-muted);">
-                  ${this._escape(
-                    i18n.t('card_expires', { date: i18n.formatDateTime(spotlight.expires_at) })
-                  )}
-                </p>`
-              : '<div style="margin-bottom:12px;"></div>'
-          }
 
           <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;">
             <button
@@ -788,11 +721,8 @@ export class MuseInviteApp {
     const el = document.getElementById('publish-mount');
     if (!el) return;
 
-    const { code, remainingSpots, description, expiresAt, errors, submitting } = this.state.form;
-    const errorKeys = [errors.code, errors.remainingSpots, errors.description, errors.expiresAt, errors.form].filter(
-      Boolean
-    );
-    const bounds = this._dateInputBounds();
+    const { code, remainingSpots, errors, submitting } = this.state.form;
+    const errorKeys = [errors.code, errors.remainingSpots, errors.form].filter(Boolean);
 
     el.innerHTML = `
       <section id="section-publish" class="meta-card" style="padding:18px 20px;margin-bottom:16px;" aria-labelledby="publish-heading">
@@ -838,43 +768,6 @@ export class MuseInviteApp {
             <button type="submit" class="btn btn-primary" style="padding:10px 18px;" ${submitting ? 'disabled' : ''}>
               ${this._escape(submitting ? i18n.t('loading') : i18n.t('publish_submit_btn'))}
             </button>
-
-            <button
-              type="button"
-              class="btn btn-soft"
-              style="padding:10px 12px;"
-              data-action="fill-sample-code"
-            >
-              ${this._escape(i18n.t('publish_fill_sample'))}
-            </button>
-          </div>
-
-          <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-top:10px;">
-            <div style="flex:2;min-width:220px;">
-              <input
-                id="publish-description-input"
-                type="text"
-                maxlength="280"
-                aria-label="${this._escape(i18n.t('publish_desc_label'))}"
-                class="input-field ${errors.description ? 'has-error' : ''}"
-                placeholder="${this._escape(i18n.t('publish_desc_placeholder'))}"
-                value="${this._escape(description)}"
-              />
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <label for="publish-expiry-input" style="font-size:13px;color:var(--text-secondary);font-weight:600;white-space:nowrap;">
-                ${this._escape(i18n.t('publish_expiry_label'))}:
-              </label>
-              <input
-                id="publish-expiry-input"
-                type="date"
-                min="${bounds.min}"
-                max="${bounds.max}"
-                class="input-field ${errors.expiresAt ? 'has-error' : ''}"
-                style="width:160px;"
-                value="${this._escape(expiresAt)}"
-              />
-            </div>
           </div>
         </form>
 
@@ -1020,11 +913,11 @@ export class MuseInviteApp {
     );
     const barColor = isAvailable
       ? record.remaining_spots <= 5
-        ? '#D97706'
-        : '#1B6E2D'
+        ? 'var(--warning-text)'
+        : 'var(--status-available-text)'
       : isUsed
-      ? '#8A8D91'
-      : '#B41E30';
+      ? 'var(--text-muted)'
+      : 'var(--status-expired-text)';
 
     const spotsText =
       record.remaining_spots <= 0
@@ -1038,7 +931,7 @@ export class MuseInviteApp {
       <article
         class="meta-card"
         style="padding:14px;display:flex;flex-direction:column;gap:10px;border-left:4px solid ${
-          isAvailable ? '#1B6E2D' : isUsed ? '#8A8D91' : '#B41E30'
+          isAvailable ? 'var(--status-available-text)' : isUsed ? 'var(--text-muted)' : 'var(--status-expired-text)'
         };"
       >
         <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
@@ -1071,22 +964,6 @@ export class MuseInviteApp {
         <div class="code-pill ${isAvailable ? '' : 'is-unavailable'}" style="font-size:16px;padding:8px 10px;">
           <span>${this._escape(record.code)}</span>
         </div>
-
-        ${
-          record.description
-            ? `<div style="font-size:12.5px;color:var(--text-secondary);line-height:1.45;word-break:break-word;">
-                ${this._escape(record.description)}
-              </div>`
-            : ''
-        }
-
-        ${
-          record.expires_at
-            ? `<div style="font-size:11.5px;color:var(--text-muted);">
-                ${this._escape(i18n.t('card_expires', { date: i18n.formatDateTime(record.expires_at) }))}
-              </div>`
-            : ''
-        }
 
         <div class="quota-bar-track" style="height:5px;">
           <div class="quota-bar-fill" style="width:${remainingPct}%;background-color:${barColor};"></div>
@@ -1237,7 +1114,7 @@ export class MuseInviteApp {
           .map(
             (t) => `
           <div class="toast-item ${t.type === 'error' ? 'is-error' : ''}">
-            <span style="color:${t.type === 'error' ? '#FCA5A5' : '#4ADE80'};font-weight:700;">
+            <span style="color:${t.type === 'error' ? 'var(--toast-error-text)' : 'var(--toast-success-text)'};font-weight:700;">
               ${t.type === 'error' ? '!' : '✓'}
             </span>
             <span>${this._escape(t.message)}</span>
