@@ -2,9 +2,9 @@
 
 > **非官方声明**：本站是独立社区互助项目，与 Muse 官方无隶属关系，也未获得官方授权。邀请码由社区成员公开分享，请自行判断有效性。
 
-- **公网地址**：<https://muse-invite-hub-9md.pages.dev/>
+- **公网地址**：<https://musecode.pages.dev/>
 - **GitHub 仓库**：<https://github.com/WRM-FW/muse-invite-hub>
-- **Cloudflare Pages 项目**：`muse-invite-hub`
+- **Cloudflare Pages 项目**：`musecode`
 - **Supabase 项目**：`MuseCodeHelp`（ref `fqgbdgsinlmdznnxnmml`，区域 Seoul）
 - **联系开发者**：3391792088@qq.com
 
@@ -164,18 +164,18 @@ npm run preview    # 预览 dist/，默认 4173
 
 ## 七、Cloudflare Pages 部署
 
-- 项目名：`muse-invite-hub`
+- 项目名：`musecode`
 - 生产分支：`main`
 - 构建命令：`npm run build`
 - 输出目录：`dist`
-- 公网地址：<https://muse-invite-hub-9md.pages.dev/>
+- 公网地址：<https://musecode.pages.dev/>
 
 本次使用直接上传（Wrangler OAuth，未创建长期 API Token）：
 
 ```bash
 npm run build
 wrangler pages deploy dist \
-  --project-name muse-invite-hub \
+  --project-name musecode \
   --branch main \
   --commit-dirty=true \
   --commit-message "Muse invite hub update"
@@ -187,6 +187,8 @@ wrangler pages deploy dist \
 - `_redirects`：`/favicon.ico` → `/favicon.svg`，其余路径 SPA 回退到 `/index.html`。
 
 不需要 Pages Functions；静态托管即可。
+
+> 备注：旧的 `muse-invite-hub-9md.pages.dev` 项目仍保留作回退，不再作为主地址。如不再需要，可以删除该项目，或把它改成 301 跳转到 `musecode.pages.dev`。
 
 ---
 
@@ -232,7 +234,7 @@ wrangler pages deploy dist \
 3. 部署：
    ```bash
    npm run build
-   wrangler pages deploy dist --project-name muse-invite-hub --branch main --commit-dirty=true
+   wrangler pages deploy dist --project-name musecode --branch main --commit-dirty=true
    ```
 4. 打开生产地址验证首页、语言切换、发布/领取/反馈和网络请求。
 5. 数据库变更：新增 `supabase/migrations/YYYYMMDDHHMMSS_name.sql`，用 `supabase db query --linked --file ...` 应用，再复查 RLS 与授权。

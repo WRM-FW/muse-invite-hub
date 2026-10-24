@@ -1,16 +1,16 @@
-name = "muse-invite-hub"
+name = "musecode"
 pages_build_output_dir = "dist"
 compatibility_date = "2026-10-01"
 
 # Cloudflare Pages 配置
 # 构建命令 (Build command): npm run build
 # 构建输出目录 (Build output directory): dist
-# 生产地址: https://muse-invite-hub-9md.pages.dev/
+# 生产地址: https://musecode.pages.dev/
 #
 # 当前站点是纯静态前端，不需要 Pages Functions。
 # 采用 Wrangler 直接上传时，Vite 会在本地构建阶段把公开变量写入静态产物：
 #   - VITE_SUPABASE_URL
 #   - VITE_SUPABASE_ANON_KEY（publishable key 或 legacy anon key）
 # 如果改接 Cloudflare 的 Git 集成构建，请到
-# Dashboard -> Pages -> muse-invite-hub -> Settings -> Environment variables
+# Dashboard -> Pages -> musecode -> Settings -> Environment variables
 # 配置同名变量。只允许公开客户端 key，严禁 service_role / sb_secret 密钥。
