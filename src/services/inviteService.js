@@ -203,8 +203,9 @@ class InviteCodeService {
     if (row.manage_token) {
       saveManageToken(row.id, row.manage_token);
     }
-
-    const record = normalizeRecord(row);
+    // Never keep the management token in application state/render data.
+    const { manage_token: _manageToken, ...safeRow } = row;
+    const record = normalizeRecord(safeRow);
     this._cache = [...this._cache.filter((item) => item.id !== record.id), record].sort(
       (a, b) => Date.parse(a.created_at) - Date.parse(b.created_at)
     );

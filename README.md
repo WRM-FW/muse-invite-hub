@@ -50,6 +50,7 @@
 
 - `supabase/migrations/20261024120000_init_invite_codes.sql`：扩展、类型、表、索引、触发器、RLS、列级授权。
 - `supabase/migrations/20261024120100_invite_code_functions.sql`：全部 RPC、限流校验和函数授权。
+- `supabase/migrations/20261024130000_status_quota_consistency.sql`：发布者强制切换状态时保持 `remaining_spots` / `claimed_count` 一致。
 
 ### `public.invite_codes`
 
@@ -200,6 +201,7 @@ wrangler pages deploy dist \
 - `claim_invite_code_use` 200，剩余次数 3 → 2；同一令牌再次领取返回 400 `already_claimed`。
 - `report_invite_code_invalid` 200，`fail_reports` 1。
 - 错误管理密钥返回 400 `not_authorized`；正确密钥可切换为 `expired`。
+- 强制切换为 `expired` 后为 0/30，恢复为 `available` 后为 1/29（`claimed_count` 同步修正）。
 - 匿名直接 `POST /rest/v1/invite_codes` → 401。
 - 匿名读取 `manage_token_hash` → 401。
 - 测试数据已全部清理，当前 `invite_codes` 与 `invite_code_reports` 均为 0 行。
