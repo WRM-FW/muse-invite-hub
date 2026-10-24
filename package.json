@@ -1,0 +1,23 @@
+{
+  "name": "muse-invite-hub",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Muse 邀请码互助站 - 独立社区互助项目（Supabase + Cloudflare Pages）",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "start": "vite",
+    "build": "vite build",
+    "build:vite": "vite build",
+    "preview": "vite preview --port 4173"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4"
+  },
+  "devDependencies": {
+    "vite": "^5.4.8"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

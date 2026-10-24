@@ -1,0 +1,467 @@
+/* ==========================================================================
+   Muse 邀请码互助站 - Meta Family Design System (Facebook / Threads / Messenger)
+   重构升级特征：
+   - 浅灰底色 (#F0F2F5) + 纯白卡片 (#FFFFFF) + 克制边框 (#E4E6EB / #CED0D4)
+   - 标志性 Meta 交互蓝 (#0866FF) 与清晰语义状态色
+   - 新增「随机抽码转盘池 (Lucky Referral Pool)」聚焦卡与 30 名额可视化进度条
+   - 严格满足桌面端、平板与手机端响应式布局及 WCAG AA 无障碍对比度
+   ========================================================================== */
+
+:root {
+  --bg-canvas: #F0F2F5;
+  --bg-surface: #FFFFFF;
+  --bg-subtle: #F7F8FA;
+  --bg-hover: #F2F3F5;
+  --bg-active: #E4E6EB;
+
+  --text-primary: #050505;
+  --text-secondary: #4B4F56;
+  --text-muted: #65676B;
+
+  --border-subtle: #E4E6EB;
+  --border-strong: #CED0D4;
+
+  --brand-primary: #0866FF;
+  --brand-primary-hover: #0054E0;
+  --brand-primary-soft: #E7F3FF;
+  --brand-primary-text: #0051D5;
+
+  --status-available-bg: #EBF7EE;
+  --status-available-text: #1B6E2D;
+  --status-available-border: #B7E1C1;
+
+  --status-used-bg: #F0F2F5;
+  --status-used-text: #4B4F56;
+  --status-used-border: #CED0D4;
+
+  --status-expired-bg: #FDECEE;
+  --status-expired-text: #B41E30;
+  --status-expired-border: #F5B7BF;
+
+  --warning-bg: #FEF6E6;
+  --warning-text: #8A5300;
+  --warning-border: #F5D491;
+
+  --danger-text: #C91B2E;
+  --danger-bg: #FFF0F2;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 16px;
+  z-index: 999;
+  padding: 8px 16px;
+  background: var(--brand-primary);
+  color: #FFFFFF;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: 12px;
+}
+
+/* 顶部独立社区声明条 */
+.top-notice-bar {
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.top-notice-inner {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* 顶部导航栏 */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.header-inner {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.brand-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text-primary);
+}
+
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background-color: var(--brand-primary);
+  color: #FFFFFF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* 英雄区双栏布局（左侧产品价值与兑换步骤速览，右侧随机抽码转盘卡） */
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 20px;
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 随机抽码聚焦框 */
+.spotlight-pool-box {
+  background-color: var(--bg-subtle);
+  border: 1.5px solid #B2D4FF;
+  border-radius: var(--radius-md);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.spotlight-code-display {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-surface);
+  border: 1.5px dashed var(--brand-primary);
+  color: var(--text-primary);
+  text-align: center;
+  word-break: break-all;
+}
+
+/* 列表卡片邀请码胶囊 */
+.code-pill {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-subtle);
+  border: 1px dashed var(--border-strong);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  word-break: break-all;
+}
+
+.code-pill.is-unavailable {
+  text-decoration: line-through;
+  color: var(--text-muted);
+  background-color: #F4F5F7;
+}
+
+/* 30 名额可视化进度条 */
+.quota-bar-track {
+  width: 100%;
+  height: 7px;
+  background-color: var(--bg-active);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.quota-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  transition: width 0.25s ease;
+}
+
+/* 状态徽章 */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.status-badge.status-available {
+  background-color: var(--status-available-bg);
+  color: var(--status-available-text);
+  border-color: var(--status-available-border);
+}
+
+.status-badge.status-used {
+  background-color: var(--status-used-bg);
+  color: var(--status-used-text);
+  border-color: var(--status-used-border);
+}
+
+.status-badge.status-expired {
+  background-color: var(--status-expired-bg);
+  color: var(--status-expired-text);
+  border-color: var(--status-expired-border);
+}
+
+/* 通用按钮系统 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: var(--brand-primary);
+  color: #FFFFFF;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--brand-primary-hover);
+}
+
+.btn-secondary {
+  background-color: var(--bg-active);
+  color: var(--text-primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #D8DADF;
+}
+
+.btn-soft {
+  background-color: var(--brand-primary-soft);
+  color: var(--brand-primary-text);
+}
+
+.btn-soft:hover:not(:disabled) {
+  background-color: #D6E9FF;
+}
+
+.btn-success-soft {
+  background-color: var(--status-available-bg);
+  color: var(--status-available-text);
+  border-color: var(--status-available-border);
+}
+
+.btn-success-soft:hover:not(:disabled) {
+  background-color: #DDF2E2;
+}
+
+.btn-outline {
+  background-color: var(--bg-surface);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+}
+
+/* 卡片与表单控件 */
+.meta-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+.input-field {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 14.5px;
+  font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input-field:hover {
+  border-color: #8A8D91;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(8, 102, 255, 0.16);
+}
+
+.input-field.has-error {
+  border-color: var(--danger-text);
+  background-color: var(--danger-bg);
+}
+
+/* 弹窗遮罩 */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background-color: rgba(5, 5, 5, 0.52);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal-panel {
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-elevated);
+  border: 1px solid var(--border-subtle);
+}
+
+/* 轻提示 Toast */
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 95;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: calc(100vw - 32px);
+}
+
+.toast-item {
+  background-color: #1C1E21;
+  color: #FFFFFF;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-elevated);
+  font-size: 13.5px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toast-item.is-error {
+  background-color: #7F1D1D;
+}
+
+/* 加载占位 */
+.skeleton {
+  border-radius: 6px;
+  background: linear-gradient(90deg, #E9EBEF 25%, #F4F5F7 37%, #E9EBEF 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.2s ease infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .toast-container {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+  }
+}
