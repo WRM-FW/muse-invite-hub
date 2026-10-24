@@ -32,7 +32,7 @@
 - 移除「重置演示数据」按钮（它会把共享数据库清空或恢复假数据），换成同位置的「刷新」。
 - 移除卡片上的 DEMO 假数据标记；自己发布的记录显示「我发布的」。
 - 发布表单保持「邀请码 + 剩余次数 + 立即分享」，不再提交或展示使用说明/有效期；「填入示例」按钮已移除。
-- 增加跟随系统的深色模式；数据库保留 `description` / `expires_at` 字段以兼容历史数据，但当前界面不再输入或展示它们。
+- 增加跟随系统的深色模式；数据库中的 `description` / `expires_at` 已通过 `20261025090000` 迁移删除。
 - 状态弹窗改为发布者管理；普通访客仍可用「我已使用」和「失效反馈」参与状态维护。
 
 ---
@@ -53,6 +53,7 @@
 - `supabase/migrations/20261024120000_init_invite_codes.sql`：扩展、类型、表、索引、触发器、RLS、列级授权。
 - `supabase/migrations/20261024120100_invite_code_functions.sql`：全部 RPC、限流校验和函数授权。
 - `supabase/migrations/20261024130000_status_quota_consistency.sql`：发布者强制切换状态时保持 `remaining_spots` / `claimed_count` 一致。
+- `supabase/migrations/20261025090000_drop_description_expiry.sql`：删除 `description` / `expires_at` 两列，并重建不带这两个字段的 RPC。
 
 ### `public.invite_codes`
 
@@ -60,18 +61,16 @@
 | --- | --- | --- |
 | `id` | uuid PK | `gen_random_uuid()` |
 | `code` | text | 4–64 位，服务端统一大写；大小写不敏感唯一索引 |
-| `description` | text | 可空字符串，最多 280 字 |
 | `status` | enum | `available` / `used` / `expired` |
 | `total_spots` | integer | 默认 30，范围 1–30 |
 | `remaining_spots` | integer | 0–total_spots |
 | `claimed_count` | integer | 发布时初始化为 `30 - remaining` |
 | `fail_reports` | integer | 失效反馈数，3 次自动失效 |
 | `created_at` / `updated_at` | timestamptz | 自动维护 |
-| `expires_at` | timestamptz | 可空；读取时若已过则视为 `expired` |
 | `manage_token_hash` | text | 发布者管理密钥的 SHA-256；**不对客户端开放** |
 | `creator_token_hash` | text | 发布限流用的访客令牌哈希；**不对客户端开放** |
 
-> `description` 与 `expires_at` 保留在数据库以兼容历史数据；当前发布界面不收集这两项，队首卡和列表卡也不展示它们。`expires_at` 仍会参与有效状态计算。
+> `description` 与 `expires_at` 已在 `20261025090000_drop_description_expiry.sql` 中删除。历史迁移文件仍保留它们，便于按顺序回放；最新数据库结构和 RPC 不再包含这两个字段。
 
 ### `public.invite_code_reports`
 
@@ -116,7 +115,7 @@ supabase db query --linked --file supabase/migrations/20261024120100_invite_code
 
 - 发布：每个访客令牌 24 小时最多 3 条；全站 10 分钟最多 30 条。
 - 领取/反馈：每个访客令牌每小时最多 60 次；`(code_id, reporter_hash, action)` 唯一去重。
-- 服务端统一去控制字符、折叠空白、大写邀请码、限制 280 字说明、4–64 位邀请码、有效期不超过 90 天。
+- 服务端统一去控制字符、大写邀请码、限制 4–64 位，剩余次数限制 1–30。
 - 搜索使用转义后的 `ILIKE` + `pg_trgm` GIN 索引，参数长度上限 64。
 - 前端所有动态文本经 HTML 转义后输出；CSP 禁止内联脚本和外部脚本。
 
@@ -208,15 +207,17 @@ wrangler pages deploy dist \
 - 强制切换为 `expired` 后为 0/30，恢复为 `available` 后为 1/29（`claimed_count` 同步修正）。
 - 匿名直接 `POST /rest/v1/invite_codes` → 401。
 - 匿名读取 `manage_token_hash` → 401。
-- 测试数据已全部清理，当前 `invite_codes` 与 `invite_code_reports` 均为 0 行。
+- 执行 `20261025090000` 后，`invite_codes` 列清单不再包含 `description` / `expires_at`；匿名查询这两列返回 400。
+- `list_invite_codes` 返回字段、`publish_invite_code(p_code, p_remaining, p_client_token)` 与前端调用一致，发布/领取/反馈/状态管理全部 200。
+- 测试数据已清理；当前保留 3 条真实邀请码记录，`invite_code_reports` 为 0 行。
 
 ### 生产站点
 
 用无头 Edge 在公网地址完成端到端测试：
 
-- 首屏中文、空状态、筛选计数为 0。
-- 发布邀请码 → 队首卡、列表卡、统计、Toast 全部正确。
-- 「我已使用」3 → 2、「失效反馈」1/3 正确。
+- 首屏中文、筛选计数正确（验证时数据库有 3 条可用邀请码）。
+- 发布表单仅包含邀请码与剩余次数；发布后队首卡、列表卡、统计、Toast 全部正确。
+- 「我已使用」剩余次数减一；「失效反馈」按 1/3 计数。
 - 邀请码搜索命中，清除按钮正常出现/隐藏。
 - 浅色/深色模式均按系统 `prefers-color-scheme` 渲染，移动端无横向溢出。
 - 发布者状态弹窗：可用 → 已使用 → 可用，统计同步。

@@ -44,7 +44,6 @@ function normalizeRecord(item) {
     remaining_spots: remainingSpots,
     claimed_count: toNumber(item.claimed_count, Math.max(0, totalSpots - remainingSpots)),
     fail_reports: toNumber(item.fail_reports, 0),
-    description: typeof item.description === 'string' ? item.description : '',
     is_local_session: Boolean(getManageToken(item.id))
   };
   normalized.status = resolveEffectiveStatus(normalized);
@@ -183,11 +182,7 @@ class InviteCodeService {
 
     const { data, error: rpcError } = await client.rpc('publish_invite_code', {
       p_code: check.normalizedCode,
-      // The database keeps these columns for legacy rows; the UI no longer
-      // collects notes or an expiry date.
-      p_description: '',
       p_remaining: check.normalizedSpots,
-      p_expires_at: null,
       p_client_token: getVisitorToken()
     });
 

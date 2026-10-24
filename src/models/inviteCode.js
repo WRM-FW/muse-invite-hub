@@ -2,7 +2,7 @@
  * @fileoverview Muse 邀请码互助站 - 数据模型与校验
  * 核心规则：
  * 1. 严格按入池时间升序排列（FIFO：越早入池的邀请码排在越上面，优先被看到和消化）。
- * 2. 剩余次数用完（remaining_spots <= 0）、累计 3 次失效反馈或到了 expires_at 时，
+ * 2. 剩余次数用完（remaining_spots <= 0）或累计 3 次失效反馈时，
  *    自动归入「已失效 (expired)」。
  */
 
@@ -22,12 +22,6 @@ export const FILTER_STATUS = Object.freeze({
 export function resolveEffectiveStatus(record) {
   if (!record) return INVITE_STATUS.EXPIRED;
   if (record.status === INVITE_STATUS.EXPIRED) return INVITE_STATUS.EXPIRED;
-  if (record.expires_at) {
-    const expiresAt = Date.parse(record.expires_at);
-    if (!Number.isNaN(expiresAt) && expiresAt <= Date.now()) {
-      return INVITE_STATUS.EXPIRED;
-    }
-  }
   if (typeof record.fail_reports === 'number' && record.fail_reports >= 3) {
     return INVITE_STATUS.EXPIRED;
   }
