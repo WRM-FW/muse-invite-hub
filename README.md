@@ -19,7 +19,7 @@
 - 状态与名额：
   - 「我已使用 (-1)」按访客去重，剩余次数减一。
   - 次数归零自动变为「已失效」。
-  - 「失效反馈」累计 3 个不同访客后自动失效。
+  - 「反馈给开发者」把状态、原因和可选说明写入开发者收件箱；**不会自动改变邀请码状态**，由开发者用通用密钥处理。
   - 状态弹窗仍保留；通用管理密钥可管理所有邀请码，发布者发布时仍会自动保存该码的专用密钥。
   - 状态弹窗支持导入 / 清除通用密钥；切换域名或清空浏览器数据后，重新导入一个密钥即可恢复管理。
 - 可用 / 已失效 / 已使用 / 全部 筛选，以及按邀请码搜索。
@@ -35,7 +35,7 @@
 - 移除卡片上的 DEMO 假数据标记；自己发布的记录显示「我发布的」。
 - 发布表单保持「邀请码 + 剩余次数 + 立即分享」，不再提交或展示使用说明/有效期；「填入示例」按钮已移除。
 - 增加跟随系统的深色模式；数据库中的 `description` / `expires_at` 已通过 `20261025090000` 迁移删除。
-- 状态弹窗改为密钥管理；普通访客仍可用「我已使用」和「失效反馈」参与状态维护。没有密钥时显示导入通用密钥的提示，而不是显示点了会报错的按钮。
+- 状态弹窗改为密钥管理；普通访客可用「我已使用」和「反馈给开发者」参与状态维护。没有密钥时显示导入通用密钥的提示，而不是显示点了会报错的按钮。
 
 ---
 
@@ -58,6 +58,7 @@
 - `supabase/migrations/20261025090000_drop_description_expiry.sql`：删除 `description` / `expires_at` 两列，并重建不带这两个字段的 RPC。
 - `supabase/migrations/20261025120000_usage_limits_and_ledger.sql`：每人 1 次分享、最多 2 个码；领取记录在删码后保留。
 - `supabase/migrations/20261025140000_universal_admin_key.sql`：新增单行 `app_settings` 通用管理密钥表，并让状态函数接受通用密钥或专用密钥。
+- `supabase/migrations/20261025160000_feedback_inbox.sql`：新增开发者反馈收件箱、提交 RPC 和通用密钥读取 RPC。
 
 ### `public.invite_codes`
 
@@ -69,7 +70,7 @@
 | `total_spots` | integer | 默认 30，范围 1–30 |
 | `remaining_spots` | integer | 0–total_spots |
 | `claimed_count` | integer | 发布时初始化为 `30 - remaining` |
-| `fail_reports` | integer | 失效反馈数，3 次自动失效 |
+| `fail_reports` | integer | 历史字段；旧版 3 次失效反馈自动失效，当前前端不再写入 |
 | `created_at` / `updated_at` | timestamptz | 自动维护 |
 | `manage_token_hash` | text | 发布者管理密钥的 SHA-256；**不对客户端开放** |
 | `creator_token_hash` | text | 发布限流用的访客令牌哈希；**不对客户端开放** |
@@ -92,6 +93,27 @@
 
 RLS 已启用且没有策略，`anon` / `authenticated` 的全部权限已撤销；只有 `SECURITY DEFINER` 状态函数能读取。通用密钥是一个高权限凭据，可管理所有邀请码，包括其他用户发布的码。
 
+### `public.invite_code_feedback`
+
+开发者反馈收件箱：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | bigint PK | identity |
+| `code_id` | uuid, nullable | 邀请码删除后自动置空 |
+| `code` | text | 提交时的邀请码快照 |
+| `reason` | text | `invalid` / `used` / `wrong_info` / `other` |
+| `note` | text | 可选补充说明，最多 300 字 |
+| `reporter_hash` | text | 访客令牌哈希；不对客户端开放 |
+| `created_at` | timestamptz | 提交时间 |
+| `resolved` | boolean | 开发者可在 Dashboard 标记已处理 |
+
+RLS 已启用且没有策略，客户端无任何直接读写权限；提交走 `submit_invite_feedback`。反馈**不会自动改变邀请码状态**。开发者查看方式：
+
+- Supabase Dashboard → Table Editor → `invite_code_feedback`；或
+- SQL：`select * from public.list_invite_feedback('<通用管理密钥>', 100);`（密钥只放在本地文件，不要提交）
+- 读取 RPC 不返回访客令牌哈希；没有邮件或推送通知，需要开发者主动查看。
+
 ### 应用迁移
 
 已用 Supabase CLI（Management API）应用到 `MuseCodeHelp`：
@@ -111,11 +133,11 @@ done
 
 ### 表级
 
-- 两张表都启用了 RLS。
+- 所有公开相关表都启用了 RLS。
 - `invite_codes` 只有一条 `SELECT` 策略：`anon` / `authenticated` 可读公开字段。
 - `invite_codes` **没有** INSERT / UPDATE / DELETE 策略，也没有对应表级授权。
 - 列级授权排除了 `manage_token_hash`、`creator_token_hash`；直接 `select=manage_token_hash` 会返回 401。
-- `invite_code_reports` 没有策略，且撤销了 anon/authenticated 的全部授权。
+- `invite_code_reports`、`app_settings`、`invite_code_feedback` 都没有策略，且撤销了 anon/authenticated 的全部授权；只能通过 `SECURITY DEFINER` 函数访问。
 
 ### 写入入口（全部是 `SECURITY DEFINER` + 固定 `search_path`）
 
@@ -125,13 +147,16 @@ done
 | `invite_stats()` | anon | 全表状态计数 |
 | `publish_invite_code(...)` | anon | 校验、去重、限流、发布；返回一次性管理密钥 |
 | `claim_invite_code_use(id, token)` | anon | 名额 -1；同一访客同一码只能一次 |
-| `report_invite_code_invalid(id, token)` | anon | 失效反馈 +1；3 个不同访客后失效 |
+| `report_invite_code_invalid(id, token)` | anon | 旧版失效反馈；保留兼容，当前前端不再调用 |
+| `submit_invite_feedback(code_id, reason, note, token)` | anon | 写入开发者收件箱；不改状态；每访客每天最多 10 条 |
+| `list_invite_feedback(admin_token, limit)` | anon + 通用密钥 | 开发者读取最近反馈；无有效通用密钥返回 `not_authorized` |
 | `set_invite_code_status(id, manage_token, status)` | anon + 管理密钥 | 通用密钥可管理所有码；专用密钥仅管理该码；无效密钥返回 `not_authorized` |
 
 ### 限流与输入处理
 
 - 发布：每个访客令牌最多 1 条当前邀请码（删除后释放名额）；全站 10 分钟最多 30 条。
-- 领取：每个访客令牌最多 2 次成功领取；领取/反馈每小时最多 60 次操作；`(code_id, reporter_hash, action)` 唯一去重。
+- 领取：每个访客令牌最多 2 次成功领取；领取/旧版反馈每小时最多 60 次操作；`(code_id, reporter_hash, action)` 唯一去重。
+- 反馈收件箱：每访客每天最多 10 条；同一访客对同一码的同一原因只接收一次；说明最多 300 字。
 - 领取记录在邀请码删除后仍保留（`code_id` 自动置 NULL），因此删码不会重置“最多 2 个码”的计数。
 - 服务端统一去控制字符、大写邀请码、限制 4–64 位，剩余次数限制 1–30。
 - 搜索使用转义后的 `ILIKE` + `pg_trgm` GIN 索引，参数长度上限 64。
@@ -142,14 +167,16 @@ done
 - 邀请码本身是公开的，无法阻止别人抢先使用；这是互助站的固有取舍。
 - 访客令牌存在 localStorage，清空后可以绕过“按令牌”的发布/领取限流；全站突发上限仍然有效。
 - 没有 CAPTCHA / Turnstile / WAF。如果出现恶意刷量，建议在 Cloudflare 侧加 Turnstile 或 WAF 规则。
-- 3 个不同令牌可以联合把有效码标记为失效；持有管理密钥的人可以恢复。没有独立的管理员后台。
+- 旧版“3 次失效反馈自动下架”函数仍保留兼容，但前端已不再调用；新反馈不会自动改变状态，由持有管理密钥的人处理。
+- 反馈只写入 Supabase 收件箱，没有邮件或推送通知；开发者需要主动查看 Dashboard 或调用 `list_invite_feedback`。
+- 反馈的每日 10 条限制同样基于 visitor token，清空 localStorage 可绕过。
 - 通用管理密钥可管理所有邀请码，是高权限凭据；数据库只保存 SHA-256，客户端无法读取 `app_settings`。泄露后应立即轮换，丢失后可由项目所有者重新生成。
 - “1 次分享 / 2 个码”限制基于浏览器 visitor token，没有账号体系；清空 localStorage 可绕过。若要强身份限制，需要登录或 Turnstile/WAF。
 - 通用密钥保存在当前浏览器的 localStorage；切换域名、清空站点数据或换浏览器后需要重新导入。专用密钥同样按“浏览器 + 域名”保存；密钥本身不会上传到服务器。
 - 通用密钥可管理其他用户发布的码；只应保存在项目所有者的设备上，不要写进仓库、前端代码或聊天。
 - 列表一次最多加载 500 条，搜索/筛选在前端对已加载数据执行；数据量更大时应改为服务端分页搜索（RPC 已支持 `p_query`）。
-- 过期状态是读取时计算，没有定时任务回写 `status`。
-- 没有删除功能（避免任意访客删除他人记录）；需要清理时由项目所有者在数据库执行 SQL。
+- 状态由领取、反馈和管理函数维护，没有定时任务；旧的 `expires_at` 列已删除。
+- 前端没有删除功能（避免任意访客删除他人记录）；需要清理时由项目所有者在数据库执行 SQL。
 - 本站不提供账号系统，也没有“发布者实名/审核”。
 
 ---
@@ -223,15 +250,16 @@ wrangler pages deploy dist \
 - `publish_invite_code` 200，返回 48 位一次性管理密钥（仅哈希入库）。
 - `list_invite_codes` / `invite_stats` 200。
 - `claim_invite_code_use` 200，剩余次数 3 → 2；同一令牌再次领取返回 400 `already_claimed`。
-- `report_invite_code_invalid` 200，`fail_reports` 1。
+- `submit_invite_feedback` 200；重复原因 400 `feedback_duplicate`；3 个不同访客提交“已失效”后邀请码仍是 `available`（不再自动下架）；说明超过 300 字 400；非法原因 400。
+- `list_invite_feedback` 使用通用密钥 200，错误密钥 400 `not_authorized`；匿名直接读取反馈表 401。
 - 错误管理密钥返回 400 `not_authorized`；正确密钥可切换为 `expired`。
 - 强制切换为 `expired` 后为 0/30，恢复为 `available` 后为 1/29（`claimed_count` 同步修正）。
 - 匿名直接 `POST /rest/v1/invite_codes` → 401。
 - 匿名读取 `manage_token_hash` → 401。
 - 执行 `20261025090000` 后，`invite_codes` 列清单不再包含 `description` / `expires_at`；匿名查询这两列返回 400。
 - `list_invite_codes` 返回字段、`publish_invite_code(p_code, p_remaining, p_client_token)` 与前端调用一致，发布/领取/反馈/状态管理全部 200。
-- 2026-10-25 池重置：删除 24 个可用码（含执行期间新发布的 1 条），恢复 15 个失效码；恢复的 15 条已重置为 **30/30**，IK1D9I 第一顺位。随后按所有者要求删除 `DDRJDM`、`GMSXW5` 和测试码 `QAADMIN-MVNBR0OX`；删除后共 14 条码、14 条可用，剩余 13 条恢复码在重置时为 30/30，之后可能被社区领取消耗。
-- 当前 438 条领取/反馈报告，其中 68 条是已删除码留下的孤儿领取记录（用于维持 2 次领取上限）；删除邀请码不会退回用户的领取次数。
+- 2026-10-25 池重置：删除 24 个可用码（含执行期间新发布的 1 条），恢复 15 个失效码；恢复的 15 条已重置为 **30/30**，IK1D9I 第一顺位。随后按所有者要求删除 `DDRJDM`、`GMSXW5` 和测试码 `QAADMIN-MVNBR0OX`；删除后为 14 条。站点开放后社区持续新增（后续验证时已 35 条），具体数量以线上为准。
+- 领取/反馈报告保留；其中包含已删除码留下的孤儿领取记录（用于维持 2 次领取上限）；删除邀请码不会退回用户的领取次数。
 - 管理密钥已简化为 **1 个通用密钥**，明文只写入本地文件 `C:\Users\28322\Desktop\muse-manage-keys.txt`，不在仓库或聊天中；状态弹窗导入一次即可管理所有邀请码。旧文件里的 3 个专用密钥已被这个文件覆盖，专用哈希仍保留但不再需要。
 
 ### 生产站点
@@ -240,12 +268,13 @@ wrangler pages deploy dist \
 
 - 首屏中文、筛选计数正确（验证时数据库已有社区发布的邀请码）。
 - 发布表单仅包含邀请码与剩余次数；发布后队首卡、列表卡、统计、Toast 全部正确。
-- 「我已使用」剩余次数减一；「失效反馈」按 1/3 计数。
+- 「我已使用」剩余次数减一；「反馈给开发者」表单可提交原因和说明，提交后 Toast 提示成功，邀请码状态保持不变。
 - 邀请码搜索命中，清除按钮正常出现/隐藏。
 - 浅色/深色模式均按系统 `prefers-color-scheme` 渲染，移动端无横向溢出。
 - 发布者状态弹窗：可用 → 已使用 → 可用，统计同步。
 - 通用管理密钥：在测试码上 API 调用 200；错误密钥 400；匿名读取 `app_settings` 401。UI 导入一次后，两个不同邀请码都能直接切换状态；清除后恢复导入框。
 - 通用密钥导入：无密钥时显示导入框；导入后出现状态按钮；清除后恢复导入框；重新导入并切换状态成功。
+- 反馈收件箱 UI：队首和卡片都有反馈入口；弹窗包含原因、说明、提示；提交成功关闭弹窗；重复提交显示错误；旧「失效反馈」按钮已移除。
 - 中文 ↔ English 切换，标题和文案同步。
 - 390px 移动端无横向溢出，导航自动换行。
 - 浏览器控制台 0 个应用错误，0 个失败请求。

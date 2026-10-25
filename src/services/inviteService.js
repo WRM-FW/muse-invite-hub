@@ -22,6 +22,10 @@ const RPC_ERRORS = {
   publish_limit_reached: { messageKey: 'err_publish_limit' },
   claim_limit_reached: { messageKey: 'err_claim_limit' },
   rate_limited: { messageKey: 'err_rate_limited' },
+  invalid_reason: { messageKey: 'err_feedback_reason' },
+  note_too_long: { messageKey: 'err_feedback_note_long' },
+  feedback_duplicate: { messageKey: 'err_feedback_duplicate' },
+  feedback_rate_limited: { messageKey: 'err_feedback_rate' },
   not_authorized: { messageKey: 'err_not_authorized' },
   already_claimed: { messageKey: 'err_already_claimed' },
   already_reported: { messageKey: 'err_already_reported' },
@@ -252,6 +256,32 @@ class InviteCodeService {
     }
 
     return { data: normalizeRecord(row), error: null };
+  }
+
+  /**
+   * Send a status report to the developer. This intentionally does NOT change
+   * the code's status; the developer reviews it and acts with a management key.
+   */
+  async submitFeedback({ codeId, reason, note }) {
+    const { client, error } = this._clientOrError();
+    if (error) return { data: null, error };
+    if (!codeId || !reason) {
+      return { data: null, error: { code: 'invalid_feedback', messageKey: 'err_generic' } };
+    }
+
+    const { data, error: rpcError } = await client.rpc('submit_invite_feedback', {
+      p_code_id: codeId,
+      p_reason: reason,
+      p_note: note || '',
+      p_reporter_token: getVisitorToken()
+    });
+
+    if (rpcError) {
+      return { data: null, error: mapRpcError(rpcError) };
+    }
+
+    const row = Array.isArray(data) ? data[0] : data;
+    return { data: row || null, error: null };
   }
 }
 

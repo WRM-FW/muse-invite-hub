@@ -41,6 +41,15 @@ export class MuseInviteApp {
         tokenError: null
       },
 
+      feedbackModal: {
+        isOpen: false,
+        recordId: null,
+        reason: 'invalid',
+        note: '',
+        submitting: false,
+        error: null
+      },
+
       toasts: []
     };
 
@@ -251,12 +260,13 @@ export class MuseInviteApp {
   }
 
   openStatusModal(recordId) {
+    this.state.feedbackModal.isOpen = false;
     this.state.statusModal = {
       isOpen: true,
       recordId,
       tokenError: null
     };
-    this.renderStatusModal();
+    this.renderModals();
   }
 
   closeStatusModal() {
@@ -265,18 +275,96 @@ export class MuseInviteApp {
       recordId: null,
       tokenError: null
     };
-    this.renderStatusModal();
+    this.renderModals();
+  }
+
+  openFeedbackModal(recordId) {
+    if (!recordId) return;
+    this.state.statusModal = {
+      isOpen: false,
+      recordId: null,
+      tokenError: null
+    };
+    this.state.feedbackModal = {
+      isOpen: true,
+      recordId,
+      reason: 'invalid',
+      note: '',
+      submitting: false,
+      error: null
+    };
+    this.renderModals();
+  }
+
+  closeFeedbackModal() {
+    this.state.feedbackModal = {
+      isOpen: false,
+      recordId: null,
+      reason: 'invalid',
+      note: '',
+      submitting: false,
+      error: null
+    };
+    this.renderModals();
+  }
+
+  async handleFeedbackSubmit(event) {
+    event.preventDefault();
+    if (this.state.feedbackModal.submitting) return;
+
+    const reasonEl = document.getElementById('feedback-reason-input');
+    const noteEl = document.getElementById('feedback-note-input');
+    const reason = reasonEl ? reasonEl.value : this.state.feedbackModal.reason;
+    const note = noteEl ? noteEl.value : this.state.feedbackModal.note;
+    const recordId = this.state.feedbackModal.recordId;
+    if (!recordId) return;
+
+    if (note.trim().length > 300) {
+      this.state.feedbackModal.error = 'err_feedback_note_long';
+      this.renderFeedbackModal();
+      return;
+    }
+
+    this.state.feedbackModal.reason = reason;
+    this.state.feedbackModal.note = note;
+    this.state.feedbackModal.submitting = true;
+    this.state.feedbackModal.error = null;
+    this.renderFeedbackModal();
+
+    const res = await inviteService.submitFeedback({
+      codeId: recordId,
+      reason,
+      note
+    });
+
+    if (res.error) {
+      this.state.feedbackModal.submitting = false;
+      this.state.feedbackModal.error = res.error.messageKey || 'err_generic';
+      this.renderFeedbackModal();
+      return;
+    }
+
+    this.state.feedbackModal = {
+      isOpen: false,
+      recordId: null,
+      reason: 'invalid',
+      note: '',
+      submitting: false,
+      error: null
+    };
+    this.renderModals();
+    this.pushToast(i18n.t('feedback_success'));
   }
 
   importStatusModalToken() {
     const input = document.getElementById('manage-token-input');
     if (!importAdminToken(input ? input.value : '')) {
       this.state.statusModal.tokenError = 'err_manage_token_format';
-      this.renderStatusModal();
+      this.renderModals();
       return;
     }
     this.state.statusModal.tokenError = null;
-    this.renderStatusModal();
+    this.renderModals();
     this.pushToast(i18n.t('toast_manage_token_saved'));
   }
 
@@ -290,7 +378,7 @@ export class MuseInviteApp {
       removeAdminToken();
     }
     this.state.statusModal.tokenError = null;
-    this.renderStatusModal();
+    this.renderModals();
   }
 
   async handleDirectStatusSet(recordId, nextStatus) {
@@ -421,9 +509,13 @@ export class MuseInviteApp {
           e.preventDefault();
           if (id) this.handleQuickPoolFeedback(id, 'claim_one');
           break;
-        case 'quick-report-dead':
+        case 'open-feedback-modal':
           e.preventDefault();
-          if (id) this.handleQuickPoolFeedback(id, 'report_dead');
+          if (id) this.openFeedbackModal(id);
+          break;
+        case 'close-feedback-modal':
+          e.preventDefault();
+          this.closeFeedbackModal();
           break;
         case 'set-filter': {
           e.preventDefault();
@@ -503,17 +595,40 @@ export class MuseInviteApp {
           delete this.state.form.errors.form;
           this.renderPublishSection();
         }
+      } else if (target.id === 'feedback-note-input') {
+        this.state.feedbackModal.note = target.value;
+        if (this.state.feedbackModal.error) {
+          this.state.feedbackModal.error = null;
+          const err = document.getElementById('feedback-error');
+          if (err) err.remove();
+        }
+      }
+    });
+
+    document.addEventListener('change', (e) => {
+      if (e.target && e.target.id === 'feedback-reason-input') {
+        this.state.feedbackModal.reason = e.target.value;
+        if (this.state.feedbackModal.error) {
+          this.state.feedbackModal.error = null;
+          const err = document.getElementById('feedback-error');
+          if (err) err.remove();
+        }
       }
     });
 
     document.addEventListener('submit', (e) => {
       if (e.target && e.target.id === 'publish-invite-form') {
         this.handleFormSubmit(e);
+      } else if (e.target && e.target.id === 'feedback-form') {
+        this.handleFeedbackSubmit(e);
       }
     });
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.state.statusModal.isOpen) {
+      if (e.key !== 'Escape') return;
+      if (this.state.feedbackModal.isOpen) {
+        this.closeFeedbackModal();
+      } else if (this.state.statusModal.isOpen) {
         this.closeStatusModal();
       }
     });
@@ -525,8 +640,21 @@ export class MuseInviteApp {
     this.renderPublishSection();
     this.renderDirectorySection();
     this.renderFooter();
-    this.renderStatusModal();
+    this.renderModals();
     this.renderToasts();
+  }
+
+  renderModals() {
+    if (this.state.feedbackModal.isOpen) {
+      this.renderFeedbackModal();
+      return;
+    }
+    if (this.state.statusModal.isOpen) {
+      this.renderStatusModal();
+      return;
+    }
+    const el = document.getElementById('modal-mount');
+    if (el) el.innerHTML = '';
   }
 
   renderHeader() {
@@ -749,10 +877,10 @@ export class MuseInviteApp {
               type="button"
               class="btn btn-outline"
               style="flex:1;font-size:13px;padding:8px 12px;color:var(--text-secondary);"
-              data-action="quick-report-dead"
+              data-action="open-feedback-modal"
               data-id="${this._escape(spotlight.id)}"
             >
-              ⚠️ ${this._escape(i18n.t('pool_btn_dead', { count: spotlight.fail_reports || 0 }))}
+              ✉️ ${this._escape(i18n.t('pool_btn_feedback'))}
             </button>
           </div>
 
@@ -1051,6 +1179,16 @@ export class MuseInviteApp {
           >
             ${this._escape(i18n.t('card_status_btn'))}
           </button>
+
+          <button
+            type="button"
+            class="btn btn-outline"
+            style="padding:6px 9px;font-size:12.5px;color:var(--text-secondary);"
+            data-action="open-feedback-modal"
+            data-id="${this._escape(record.id)}"
+          >
+            ${this._escape(i18n.t('card_feedback_btn'))}
+          </button>
         </div>
       </article>
     `;
@@ -1077,6 +1215,94 @@ export class MuseInviteApp {
           </div>
         </div>
       </footer>
+    `;
+  }
+
+  renderFeedbackModal() {
+    const el = document.getElementById('modal-mount');
+    if (!el) return;
+
+    const { isOpen, recordId, reason, note, submitting, error } = this.state.feedbackModal;
+    if (!isOpen || !recordId) {
+      el.innerHTML = '';
+      return;
+    }
+
+    const record = this.state.records.find((r) => r.id === recordId);
+    if (!record) {
+      el.innerHTML = '';
+      return;
+    }
+
+    const reasons = [
+      ['invalid', 'feedback_reason_invalid'],
+      ['used', 'feedback_reason_used'],
+      ['wrong_info', 'feedback_reason_wrong'],
+      ['other', 'feedback_reason_other']
+    ];
+
+    el.innerHTML = `
+      <div class="modal-backdrop" role="dialog" aria-modal="true">
+        <div class="modal-panel" style="max-width:440px;padding:20px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <h3 style="margin:0;font-size:16px;font-weight:700;">
+              ${this._escape(i18n.t('feedback_title'))}
+            </h3>
+            <button type="button" class="btn btn-secondary" style="padding:4px 8px;" data-action="close-feedback-modal">
+              ✕
+            </button>
+          </div>
+
+          <div style="font-family:var(--font-mono);font-weight:700;font-size:15px;margin-bottom:8px;">
+            ${this._escape(record.code)}
+          </div>
+          <p style="margin:0 0 12px 0;font-size:12.5px;color:var(--text-secondary);">
+            ${this._escape(i18n.t('feedback_desc'))}
+          </p>
+
+          <form id="feedback-form" style="display:flex;flex-direction:column;gap:10px;">
+            <label for="feedback-reason-input" style="font-size:13px;color:var(--text-secondary);font-weight:600;">
+              ${this._escape(i18n.t('feedback_reason_label'))}
+            </label>
+            <select id="feedback-reason-input" class="input-field">
+              ${reasons
+                .map(
+                  ([value, key]) =>
+                    `<option value="${value}" ${reason === value ? 'selected' : ''}>${this._escape(i18n.t(key))}</option>`
+                )
+                .join('')}
+            </select>
+
+            <label for="feedback-note-input" style="font-size:13px;color:var(--text-secondary);font-weight:600;">
+              ${this._escape(i18n.t('feedback_note_label'))}
+            </label>
+            <textarea
+              id="feedback-note-input"
+              class="input-field"
+              rows="3"
+              maxlength="300"
+              style="resize:vertical;min-height:78px;"
+              placeholder="${this._escape(i18n.t('feedback_note_placeholder'))}"
+            >${this._escape(note)}</textarea>
+
+            ${
+              error
+                ? `<div id="feedback-error" role="alert" style="font-size:12.5px;color:var(--danger-text);font-weight:600;">
+                    ⚠ ${this._escape(i18n.t(error))}
+                  </div>`
+                : ''
+            }
+
+            <p style="margin:0;font-size:11.5px;color:var(--text-muted);">
+              ${this._escape(i18n.t('feedback_hint'))}
+            </p>
+
+            <button type="submit" class="btn btn-primary" style="padding:10px 12px;" ${submitting ? 'disabled' : ''}>
+              ${this._escape(submitting ? i18n.t('feedback_submitting') : i18n.t('feedback_submit'))}
+            </button>
+          </form>
+        </div>
+      </div>
     `;
   }
 
