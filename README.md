@@ -59,6 +59,7 @@
 - `supabase/migrations/20261025120000_usage_limits_and_ledger.sql`：每人 1 次分享、最多 2 个码；领取记录在删码后保留。
 - `supabase/migrations/20261025140000_universal_admin_key.sql`：新增单行 `app_settings` 通用管理密钥表，并让状态函数接受通用密钥或专用密钥。
 - `supabase/migrations/20261025160000_feedback_inbox.sql`：新增开发者反馈收件箱、提交 RPC 和通用密钥读取 RPC。
+- `supabase/migrations/20261025180000_security_advisor_cleanup.sql`：删除测试表、旧失效反馈函数和反馈读取 RPC；收紧函数执行权限。
 
 ### `public.invite_codes`
 
@@ -110,9 +111,8 @@ RLS 已启用且没有策略，`anon` / `authenticated` 的全部权限已撤销
 
 RLS 已启用且没有策略，客户端无任何直接读写权限；提交走 `submit_invite_feedback`。反馈**不会自动改变邀请码状态**。开发者查看方式：
 
-- Supabase Dashboard → Table Editor → `invite_code_feedback`；或
-- SQL：`select * from public.list_invite_feedback('<通用管理密钥>', 100);`（密钥只放在本地文件，不要提交）
-- 读取 RPC 不返回访客令牌哈希；没有邮件或推送通知，需要开发者主动查看。
+- Supabase Dashboard → Table Editor → `invite_code_feedback`；`resolved` 可直接改。
+- 没有邮件或推送通知；也没有公开的反馈读取 RPC，需开发者主动查看 Dashboard。
 
 ### 应用迁移
 
@@ -147,28 +147,43 @@ done
 | `invite_stats()` | anon | 全表状态计数 |
 | `publish_invite_code(...)` | anon | 校验、去重、限流、发布；返回一次性管理密钥 |
 | `claim_invite_code_use(id, token)` | anon | 名额 -1；同一访客同一码只能一次 |
-| `report_invite_code_invalid(id, token)` | anon | 旧版失效反馈；保留兼容，当前前端不再调用 |
 | `submit_invite_feedback(code_id, reason, note, token)` | anon | 写入开发者收件箱；不改状态；每访客每天最多 10 条 |
-| `list_invite_feedback(admin_token, limit)` | anon + 通用密钥 | 开发者读取最近反馈；无有效通用密钥返回 `not_authorized` |
 | `set_invite_code_status(id, manage_token, status)` | anon + 管理密钥 | 通用密钥可管理所有码；专用密钥仅管理该码；无效密钥返回 `not_authorized` |
 
 ### 限流与输入处理
 
 - 发布：每个访客令牌最多 1 条当前邀请码（删除后释放名额）；全站 10 分钟最多 30 条。
-- 领取：每个访客令牌最多 2 次成功领取；领取/旧版反馈每小时最多 60 次操作；`(code_id, reporter_hash, action)` 唯一去重。
+- 领取：每个访客令牌最多 2 次成功领取；领取动作每小时最多 60 次；`(code_id, reporter_hash, action)` 唯一去重。
 - 反馈收件箱：每访客每天最多 10 条；同一访客对同一码的同一原因只接收一次；说明最多 300 字。
 - 领取记录在邀请码删除后仍保留（`code_id` 自动置 NULL），因此删码不会重置“最多 2 个码”的计数。
 - 服务端统一去控制字符、大写邀请码、限制 4–64 位，剩余次数限制 1–30。
 - 搜索使用转义后的 `ILIKE` + `pg_trgm` GIN 索引，参数长度上限 64。
 - 前端所有动态文本经 HTML 转义后输出；CSP 禁止内联脚本和外部脚本。
 
+### Security Advisor 审计（2026-10-25）
+
+实际查询确认并处理：
+
+- `public._qoder_probe`：早期测试遗留表，RLS 关闭，`anon` / `authenticated` 拥有 ALL；仅 1 行整数测试数据，无敏感信息。已 **DROP**。
+- `report_invite_code_invalid`：旧版 3 次自动下架函数，前端已不使用；已 **DROP**，避免匿名访客通过它篡改状态。
+- `list_invite_feedback`：用通用密钥读取全部反馈的 RPC；属于不必要的公开执行面，已 **DROP**。反馈改在 Dashboard 查看。
+- `set_updated_at`：触发器函数原先对 `PUBLIC` 可执行；已从 `public/anon/authenticated` 撤销 EXECUTE，触发器仍正常。
+- 4 张表全部启用 RLS；`anon/authenticated` 没有表级授权；`invite_codes` 只有列级 SELECT（不含两个哈希列）。
+- 剩余 4 个 `SECURITY DEFINER` RPC 是产品必需的匿名入口：`publish_invite_code`、`claim_invite_code_use`、`set_invite_code_status`、`submit_invite_feedback`。
+  - 均固定 `search_path = public, extensions, pg_temp`。
+  - 均未授予 `PUBLIC`；只授予 `anon/authenticated`。
+  - 分别有输入校验、1 次分享、2 次领取、每天 10 条反馈、管理密钥校验等限制。
+  - **Security Advisor 仍会把“anon 可执行 SECURITY DEFINER”列为警告**；这是匿名 RPC 架构的固有提示。若要求零警告，需要把写操作迁到登录用户或 Cloudflare Functions + service role。
+- 审计核对：不存在名为 `claim_invite_code` 的独立函数，实际是 `claim_invite_code_use`。
+- 残余风险：匿名限流基于 visitor token，清空 localStorage 可绕过；通用密钥泄露可管理所有码；仍无 CAPTCHA/WAF。
+
 ### 诚实的限制（不是“完美防护”）
 
 - 邀请码本身是公开的，无法阻止别人抢先使用；这是互助站的固有取舍。
 - 访客令牌存在 localStorage，清空后可以绕过“按令牌”的发布/领取限流；全站突发上限仍然有效。
 - 没有 CAPTCHA / Turnstile / WAF。如果出现恶意刷量，建议在 Cloudflare 侧加 Turnstile 或 WAF 规则。
-- 旧版“3 次失效反馈自动下架”函数仍保留兼容，但前端已不再调用；新反馈不会自动改变状态，由持有管理密钥的人处理。
-- 反馈只写入 Supabase 收件箱，没有邮件或推送通知；开发者需要主动查看 Dashboard 或调用 `list_invite_feedback`。
+- 旧版“3 次失效反馈自动下架”函数已在 `20261025180000` 中删除；新反馈不会自动改变状态，由持有管理密钥的人处理。
+- 反馈只写入 Supabase 收件箱，没有邮件或推送通知，也没有公开读取 RPC；开发者需在 Dashboard 主动查看。
 - 反馈的每日 10 条限制同样基于 visitor token，清空 localStorage 可绕过。
 - 通用管理密钥可管理所有邀请码，是高权限凭据；数据库只保存 SHA-256，客户端无法读取 `app_settings`。泄露后应立即轮换，丢失后可由项目所有者重新生成。
 - “1 次分享 / 2 个码”限制基于浏览器 visitor token，没有账号体系；清空 localStorage 可绕过。若要强身份限制，需要登录或 Turnstile/WAF。
@@ -251,7 +266,8 @@ wrangler pages deploy dist \
 - `list_invite_codes` / `invite_stats` 200。
 - `claim_invite_code_use` 200，剩余次数 3 → 2；同一令牌再次领取返回 400 `already_claimed`。
 - `submit_invite_feedback` 200；重复原因 400 `feedback_duplicate`；3 个不同访客提交“已失效”后邀请码仍是 `available`（不再自动下架）；说明超过 300 字 400；非法原因 400。
-- `list_invite_feedback` 使用通用密钥 200，错误密钥 400 `not_authorized`；匿名直接读取反馈表 401。
+- Security Advisor 清理后复测：`_qoder_probe` 不存在；`report_invite_code_invalid` / `list_invite_feedback` 不存在；4 张表 RLS=true；`anon/authenticated` 无表级授权；`set_updated_at` 的 anon/public 执行权限为 false；剩余 4 个 definer RPC 仅 anon/authenticated 可执行，`public_grant=false`，`search_path` 固定。
+- 清理后重新调用 `publish_invite_code` / `set_invite_code_status` / `submit_invite_feedback` 均 200，`updated_at` 触发器正常；测试事务已回滚。
 - 错误管理密钥返回 400 `not_authorized`；正确密钥可切换为 `expired`。
 - 强制切换为 `expired` 后为 0/30，恢复为 `available` 后为 1/29（`claimed_count` 同步修正）。
 - 匿名直接 `POST /rest/v1/invite_codes` → 401。

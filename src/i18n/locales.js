@@ -50,7 +50,6 @@ export const LOCALES = {
     err_rate_limited: '操作过于频繁，请稍后再试',
     err_not_authorized: '只有发布者可以在本浏览器切换该码的状态',
     err_already_claimed: '你已经标记过这个邀请码',
-    err_already_reported: '你已经反馈过这个邀请码',
     err_not_available: '该邀请码当前不可用',
     err_not_found: '该邀请码已不存在',
     err_generic: '操作失败，请稍后重试',
@@ -126,7 +125,6 @@ export const LOCALES = {
     toast_drew: '已切换至：{code}',
     toast_claimed: '{code} 剩余次数已减至 {remaining}',
     toast_exhausted: '{code} 次数已用完，已自动放入「已失效」',
-    toast_reported: '已反馈 {code} 失效 ({reports}/3)',
     toast_updated: '已将 {code} 状态设为：{status}'
   },
 
@@ -176,7 +174,6 @@ export const LOCALES = {
     err_rate_limited: 'Too many actions. Please try again later.',
     err_not_authorized: 'Only the publisher can change this code’s status on this browser.',
     err_already_claimed: 'You already marked this code as used.',
-    err_already_reported: 'You already reported this code.',
     err_not_available: 'This code is no longer available.',
     err_not_found: 'This code no longer exists.',
     err_generic: 'Something went wrong. Please try again.',
@@ -252,7 +249,6 @@ export const LOCALES = {
     toast_drew: 'Switched to: {code}',
     toast_claimed: '{code} now has {remaining} uses left',
     toast_exhausted: '{code} reached 0 uses and moved to Expired',
-    toast_reported: 'Reported {code} ({reports}/3)',
     toast_updated: 'Set {code} status to {status}'
   }
 };

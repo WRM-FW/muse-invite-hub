@@ -241,17 +241,6 @@ export class MuseInviteApp {
               })
             );
           }
-        } else if (actionType === 'report_dead') {
-          if (res.data.status === INVITE_STATUS.EXPIRED) {
-            this.pushToast(i18n.t('toast_exhausted', { code: res.data.code }));
-          } else {
-            this.pushToast(
-              i18n.t('toast_reported', {
-                code: res.data.code,
-                reports: res.data.fail_reports
-              })
-            );
-          }
         }
       }
     } finally {

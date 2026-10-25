@@ -28,9 +28,7 @@ const RPC_ERRORS = {
   feedback_rate_limited: { messageKey: 'err_feedback_rate' },
   not_authorized: { messageKey: 'err_not_authorized' },
   already_claimed: { messageKey: 'err_already_claimed' },
-  already_reported: { messageKey: 'err_already_reported' },
   not_available: { messageKey: 'err_not_available' },
-  not_reportable: { messageKey: 'err_not_available' },
   not_found: { messageKey: 'err_not_found' },
   invalid_token: { messageKey: 'err_generic' },
   invalid_status: { messageKey: 'err_generic' }
@@ -216,8 +214,8 @@ class InviteCodeService {
 
   /**
    * 社区操作与发布者状态管理。
-   * - claim_one / report_dead：任何人可用，数据库按 visitor token 去重与限流。
-   * - set_status：仅发布者可用，需要发布时保存在本浏览器的管理密钥。
+   * - claim_one：任何人可用，数据库按 visitor token 去重与限流。
+   * - set_status：必须持有该码的专用密钥或通用管理密钥。
    */
   async previewStatusUpdate({ id, actionType = 'set_status', nextStatus }) {
     const { client, error } = this._clientOrError();
@@ -228,9 +226,6 @@ class InviteCodeService {
 
     if (actionType === 'claim_one') {
       rpcName = 'claim_invite_code_use';
-      params = { p_id: id, p_reporter_token: getVisitorToken() };
-    } else if (actionType === 'report_dead') {
-      rpcName = 'report_invite_code_invalid';
       params = { p_id: id, p_reporter_token: getVisitorToken() };
     } else if (actionType === 'set_status') {
       // Prefer the code-specific token saved at publish time; otherwise use
