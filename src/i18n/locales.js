@@ -88,14 +88,14 @@ export const LOCALES = {
 
     // 状态切换弹窗
     modal_title: '切换邀请码状态',
-    modal_desc: '只有发布者（本浏览器保存了管理密钥）可以切换状态；其他访客可使用「我已使用」或失效反馈。',
-    modal_has_token: '本浏览器已保存该邀请码的管理密钥。',
-    modal_no_token: '本浏览器没有这个邀请码的管理密钥。密钥按浏览器和域名分别保存，切换域名或清空站点数据后不会自动迁移。请导入发布时保存的密钥。',
-    modal_token_placeholder: '粘贴 48 位管理密钥',
-    modal_import_token: '导入密钥',
+    modal_desc: '只有持有管理密钥的人可以切换状态；没有密钥时可在下方导入通用密钥。其他访客可使用「我已使用」或失效反馈。',
+    modal_has_token: '本浏览器已保存管理密钥（通用或该码专用）。',
+    modal_no_token: '本浏览器没有这个邀请码的管理密钥。可以导入通用管理密钥，一次管理所有邀请码。',
+    modal_token_placeholder: '粘贴 48 位通用管理密钥',
+    modal_import_token: '导入通用密钥',
     modal_clear_token: '清除本机密钥',
     err_manage_token_format: '管理密钥格式不正确（应为 48 位十六进制字符）',
-    toast_manage_token_saved: '管理密钥已保存，可以切换状态了',
+    toast_manage_token_saved: '通用管理密钥已保存，可以管理所有邀请码',
 
     // 底部说明
     footer_guide: '兑换方法：注册 Muse 48 小时内 → 打开 Settings (设置) → Redeem invite code 输入即可。',
@@ -194,14 +194,14 @@ export const LOCALES = {
 
     // Modal
     modal_title: 'Switch Code Status',
-    modal_desc: 'Only the publisher (this browser holds the management key) can switch the status. Other visitors can use “I used this” or the failure feedback.',
-    modal_has_token: 'The management key for this code is saved in this browser.',
-    modal_no_token: 'This browser does not have the management key for this code. Keys are stored per browser and per domain; they do not migrate after a domain change or cleared site data. Import the key saved at publish time.',
-    modal_token_placeholder: 'Paste the 48-character management key',
-    modal_import_token: 'Import key',
-    modal_clear_token: 'Forget key on this browser',
+    modal_desc: 'Only someone holding a management key can switch the status. If no key is saved, import the universal key below. Other visitors can use “I used this” or the failure feedback.',
+    modal_has_token: 'A management key (universal or code-specific) is saved in this browser.',
+    modal_no_token: 'This browser does not have a management key for this code. Import the universal management key to manage every code at once.',
+    modal_token_placeholder: 'Paste the 48-character universal management key',
+    modal_import_token: 'Import universal key',
+    modal_clear_token: 'Forget keys on this browser',
     err_manage_token_format: 'Invalid management key (expected 48 hex characters)',
-    toast_manage_token_saved: 'Management key saved. You can switch the status now.',
+    toast_manage_token_saved: 'Universal management key saved. You can manage every code.',
 
     // Footer
     footer_guide: 'How to redeem: Within 48h of joining Muse → Settings → Redeem invite code.',

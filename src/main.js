@@ -6,7 +6,13 @@
 
 import { i18n } from './i18n/index.js';
 import { inviteService } from './services/inviteService.js';
-import { getManageToken, importManageToken, removeManageToken } from './services/tokenStore.js';
+import {
+  getAdminToken,
+  getManageToken,
+  importAdminToken,
+  removeAdminToken,
+  removeManageToken
+} from './services/tokenStore.js';
 import { INVITE_STATUS, FILTER_STATUS, validateInviteSubmission } from './models/inviteCode.js';
 
 export class MuseInviteApp {
@@ -262,10 +268,9 @@ export class MuseInviteApp {
     this.renderStatusModal();
   }
 
-  importStatusModalToken(recordId) {
-    if (!recordId) return;
+  importStatusModalToken() {
     const input = document.getElementById('manage-token-input');
-    if (!importManageToken(recordId, input ? input.value : '')) {
+    if (!importAdminToken(input ? input.value : '')) {
       this.state.statusModal.tokenError = 'err_manage_token_format';
       this.renderStatusModal();
       return;
@@ -277,7 +282,13 @@ export class MuseInviteApp {
 
   clearStatusModalToken(recordId) {
     if (!recordId) return;
-    removeManageToken(recordId);
+    // Clear the code-specific key first; if only the universal key exists,
+    // clear that. A second click is needed when both are present.
+    if (getManageToken(recordId)) {
+      removeManageToken(recordId);
+    } else {
+      removeAdminToken();
+    }
     this.state.statusModal.tokenError = null;
     this.renderStatusModal();
   }
@@ -458,7 +469,7 @@ export class MuseInviteApp {
         }
         case 'import-manage-token':
           e.preventDefault();
-          if (id) this.importStatusModalToken(id);
+          this.importStatusModalToken();
           break;
         case 'clear-manage-token':
           e.preventDefault();
@@ -1085,7 +1096,7 @@ export class MuseInviteApp {
       return;
     }
 
-    const hasToken = Boolean(getManageToken(record.id));
+    const hasToken = Boolean(getManageToken(record.id) || getAdminToken());
     const tokenError = this.state.statusModal.tokenError;
     const statusButtons = `
       <div style="display:flex;flex-direction:column;gap:8px;">

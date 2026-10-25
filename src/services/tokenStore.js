@@ -7,6 +7,7 @@
 
 const VISITOR_KEY = 'muse_invite_hub_visitor_token_v1';
 const MANAGE_KEY = 'muse_invite_hub_manage_tokens_v1';
+const ADMIN_KEY = 'muse_invite_hub_admin_token_v1';
 const MAX_MANAGE_ENTRIES = 200;
 
 function readStorage(key) {
@@ -95,4 +96,24 @@ export function removeManageToken(recordId) {
   if (!Object.prototype.hasOwnProperty.call(map, recordId)) return;
   delete map[recordId];
   writeManageTokens(map);
+}
+
+export function getAdminToken() {
+  const token = readStorage(ADMIN_KEY);
+  return typeof token === 'string' && /^[a-f0-9]{48}$/.test(token) ? token : null;
+}
+
+export function importAdminToken(token) {
+  const normalized = String(token || '').trim().toLowerCase();
+  if (!/^[a-f0-9]{48}$/.test(normalized)) return false;
+  writeStorage(ADMIN_KEY, normalized);
+  return true;
+}
+
+export function removeAdminToken() {
+  try {
+    window.localStorage.removeItem(ADMIN_KEY);
+  } catch (_err) {
+    // ignore storage errors
+  }
 }

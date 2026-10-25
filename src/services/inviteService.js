@@ -11,7 +11,7 @@
 
 import { INVITE_STATUS, resolveEffectiveStatus, validateInviteSubmission } from '../models/inviteCode.js';
 import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient.js';
-import { getManageToken, getVisitorToken, saveManageToken } from './tokenStore.js';
+import { getAdminToken, getManageToken, getVisitorToken, saveManageToken } from './tokenStore.js';
 
 const LIST_LIMIT = 500;
 
@@ -229,7 +229,9 @@ class InviteCodeService {
       rpcName = 'report_invite_code_invalid';
       params = { p_id: id, p_reporter_token: getVisitorToken() };
     } else if (actionType === 'set_status') {
-      const manageToken = getManageToken(id);
+      // Prefer the code-specific token saved at publish time; otherwise use
+      // the universal key imported by the site owner.
+      const manageToken = getManageToken(id) || getAdminToken();
       if (!manageToken) {
         return { data: null, error: { code: 'not_authorized', messageKey: 'err_not_authorized' } };
       }
