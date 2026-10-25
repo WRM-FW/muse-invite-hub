@@ -81,3 +81,18 @@ export function getManageToken(recordId) {
   const token = readManageTokens()[recordId];
   return typeof token === 'string' && token.length >= 32 ? token : null;
 }
+
+export function importManageToken(recordId, token) {
+  const normalized = String(token || '').trim().toLowerCase();
+  if (!recordId || !/^[a-f0-9]{48}$/.test(normalized)) return false;
+  saveManageToken(recordId, normalized);
+  return true;
+}
+
+export function removeManageToken(recordId) {
+  if (!recordId) return;
+  const map = readManageTokens();
+  if (!Object.prototype.hasOwnProperty.call(map, recordId)) return;
+  delete map[recordId];
+  writeManageTokens(map);
+}

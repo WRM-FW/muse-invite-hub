@@ -6,6 +6,7 @@
 
 import { i18n } from './i18n/index.js';
 import { inviteService } from './services/inviteService.js';
+import { getManageToken, importManageToken, removeManageToken } from './services/tokenStore.js';
 import { INVITE_STATUS, FILTER_STATUS, validateInviteSubmission } from './models/inviteCode.js';
 
 export class MuseInviteApp {
@@ -30,7 +31,8 @@ export class MuseInviteApp {
 
       statusModal: {
         isOpen: false,
-        recordId: null
+        recordId: null,
+        tokenError: null
       },
 
       toasts: []
@@ -245,7 +247,8 @@ export class MuseInviteApp {
   openStatusModal(recordId) {
     this.state.statusModal = {
       isOpen: true,
-      recordId
+      recordId,
+      tokenError: null
     };
     this.renderStatusModal();
   }
@@ -253,8 +256,29 @@ export class MuseInviteApp {
   closeStatusModal() {
     this.state.statusModal = {
       isOpen: false,
-      recordId: null
+      recordId: null,
+      tokenError: null
     };
+    this.renderStatusModal();
+  }
+
+  importStatusModalToken(recordId) {
+    if (!recordId) return;
+    const input = document.getElementById('manage-token-input');
+    if (!importManageToken(recordId, input ? input.value : '')) {
+      this.state.statusModal.tokenError = 'err_manage_token_format';
+      this.renderStatusModal();
+      return;
+    }
+    this.state.statusModal.tokenError = null;
+    this.renderStatusModal();
+    this.pushToast(i18n.t('toast_manage_token_saved'));
+  }
+
+  clearStatusModalToken(recordId) {
+    if (!recordId) return;
+    removeManageToken(recordId);
+    this.state.statusModal.tokenError = null;
     this.renderStatusModal();
   }
 
@@ -432,6 +456,14 @@ export class MuseInviteApp {
           }
           break;
         }
+        case 'import-manage-token':
+          e.preventDefault();
+          if (id) this.importStatusModalToken(id);
+          break;
+        case 'clear-manage-token':
+          e.preventDefault();
+          if (id) this.clearStatusModalToken(id);
+          break;
         default:
           break;
       }
@@ -1049,6 +1081,85 @@ export class MuseInviteApp {
       return;
     }
 
+    const hasToken = Boolean(getManageToken(record.id));
+    const tokenError = this.state.statusModal.tokenError;
+    const statusButtons = `
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button
+          type="button"
+          class="btn btn-outline"
+          style="justify-content:flex-start;padding:10px 12px;"
+          data-action="set-direct-status"
+          data-id="${this._escape(record.id)}"
+          data-status="${INVITE_STATUS.AVAILABLE}"
+        >
+          ● ${this._escape(i18n.t('status_available'))}
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline"
+          style="justify-content:flex-start;padding:10px 12px;"
+          data-action="set-direct-status"
+          data-id="${this._escape(record.id)}"
+          data-status="${INVITE_STATUS.USED}"
+        >
+          ✓ ${this._escape(i18n.t('status_used'))}
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline"
+          style="justify-content:flex-start;padding:10px 12px;"
+          data-action="set-direct-status"
+          data-id="${this._escape(record.id)}"
+          data-status="${INVITE_STATUS.EXPIRED}"
+        >
+          ✕ ${this._escape(i18n.t('status_expired'))}
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline"
+          style="padding:6px 10px;font-size:12px;color:var(--text-muted);"
+          data-action="clear-manage-token"
+          data-id="${this._escape(record.id)}"
+        >
+          ${this._escape(i18n.t('modal_clear_token'))}
+        </button>
+      </div>
+    `;
+    const importPanel = `
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="padding:10px 12px;border-radius:8px;background:var(--warning-bg);color:var(--warning-text);border:1px solid var(--warning-border);font-size:12.5px;line-height:1.55;">
+          ${this._escape(i18n.t('modal_no_token'))}
+        </div>
+        <input
+          id="manage-token-input"
+          type="password"
+          maxlength="64"
+          autocomplete="off"
+          spellcheck="false"
+          class="input-field"
+          aria-label="${this._escape(i18n.t('modal_token_placeholder'))}"
+          placeholder="${this._escape(i18n.t('modal_token_placeholder'))}"
+        />
+        <button
+          type="button"
+          class="btn btn-primary"
+          style="padding:10px 12px;"
+          data-action="import-manage-token"
+          data-id="${this._escape(record.id)}"
+        >
+          ${this._escape(i18n.t('modal_import_token'))}
+        </button>
+        ${
+          tokenError
+            ? `<div role="alert" style="font-size:12.5px;color:var(--danger-text);font-weight:600;">
+                ⚠ ${this._escape(i18n.t(tokenError))}
+              </div>`
+            : ''
+        }
+      </div>
+    `;
+
     el.innerHTML = `
       <div class="modal-backdrop" role="dialog" aria-modal="true">
         <div class="modal-panel" style="max-width:400px;padding:20px;">
@@ -1068,38 +1179,13 @@ export class MuseInviteApp {
             ${this._escape(i18n.t('modal_desc'))}
           </p>
 
-          <div style="display:flex;flex-direction:column;gap:8px;">
-            <button
-              type="button"
-              class="btn btn-outline"
-              style="justify-content:flex-start;padding:10px 12px;"
-              data-action="set-direct-status"
-              data-id="${this._escape(record.id)}"
-              data-status="${INVITE_STATUS.AVAILABLE}"
-            >
-              ● ${this._escape(i18n.t('status_available'))}
-            </button>
-            <button
-              type="button"
-              class="btn btn-outline"
-              style="justify-content:flex-start;padding:10px 12px;"
-              data-action="set-direct-status"
-              data-id="${this._escape(record.id)}"
-              data-status="${INVITE_STATUS.USED}"
-            >
-              ✓ ${this._escape(i18n.t('status_used'))}
-            </button>
-            <button
-              type="button"
-              class="btn btn-outline"
-              style="justify-content:flex-start;padding:10px 12px;"
-              data-action="set-direct-status"
-              data-id="${this._escape(record.id)}"
-              data-status="${INVITE_STATUS.EXPIRED}"
-            >
-              ✕ ${this._escape(i18n.t('status_expired'))}
-            </button>
-          </div>
+          ${
+            hasToken
+              ? `<p style="margin:0 0 10px 0;font-size:12px;color:var(--status-available-text);font-weight:600;">
+                  ${this._escape(i18n.t('modal_has_token'))}
+                </p>${statusButtons}`
+              : importPanel
+          }
         </div>
       </div>
     `;
