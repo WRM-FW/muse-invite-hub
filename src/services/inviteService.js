@@ -19,6 +19,8 @@ const RPC_ERRORS = {
   duplicate_code: { messageKey: 'err_code_duplicate', fieldErrors: { code: 'err_code_duplicate' } },
   invalid_code: { fieldErrors: { code: 'err_code_format' } },
   invalid_spots: { fieldErrors: { remainingSpots: 'err_spots_range' } },
+  publish_limit_reached: { messageKey: 'err_publish_limit' },
+  claim_limit_reached: { messageKey: 'err_claim_limit' },
   rate_limited: { messageKey: 'err_rate_limited' },
   not_authorized: { messageKey: 'err_not_authorized' },
   already_claimed: { messageKey: 'err_already_claimed' },

@@ -26,13 +26,14 @@ export const LOCALES = {
     pool_btn_dead: '失效反馈 ({count}/3)',
     pool_empty: '暂无可用邀请码，请在下方分享新码。',
     pool_empty_cta: '去分享',
+    limit_hint: '每人最多使用 2 个码 · 每人限分享 1 个码',
 
     // 极简发码条
     publish_title: '分享你的邀请码',
     publish_code_placeholder: '输入邀请码 (如 DEMO-9NF4F6)',
     publish_spots_label: '剩余次数',
     publish_submit_btn: '立即分享',
-    publish_demo_hint: '按入池先后排队，数据实时同步。',
+    publish_demo_hint: '按入池先后排队 · 每人限分享 1 个、最多使用 2 个码',
     publish_success: '已入池排队：{code}（管理密钥已保存在本浏览器）',
 
     // 校验错误
@@ -41,6 +42,8 @@ export const LOCALES = {
     err_code_format: '仅支持字母、数字或连字符(-)',
     err_code_duplicate: '该邀请码已在池中',
     err_spots_range: '剩余次数需为 1–30',
+    err_publish_limit: '每人只能分享 1 个邀请码',
+    err_claim_limit: '每人最多使用 2 个邀请码',
 
     // 网络与后端错误
     err_network: '网络连接失败，请检查网络后重试',
@@ -130,13 +133,14 @@ export const LOCALES = {
     pool_btn_dead: 'Didn’t Work ({count}/3)',
     pool_empty: 'No active codes right now. Share one below.',
     pool_empty_cta: 'Share a code',
+    limit_hint: 'Up to 2 codes per person · 1 share per person',
 
     // Quick publish bar
     publish_title: 'Share Your Invite Code',
     publish_code_placeholder: 'Enter invite code (e.g. DEMO-9NF4F6)',
     publish_spots_label: 'Uses left',
     publish_submit_btn: 'Add to Queue',
-    publish_demo_hint: 'Ordered by entry time (FIFO). Data is shared in real time.',
+    publish_demo_hint: 'FIFO queue · 1 share and up to 2 codes per person',
     publish_success: 'Added to queue: {code} (management key saved in this browser)',
 
     // Errors
@@ -145,6 +149,8 @@ export const LOCALES = {
     err_code_format: 'Alphanumeric characters or hyphens (-) only',
     err_code_duplicate: 'This code is already in the queue',
     err_spots_range: 'Uses left must be between 1 and 30',
+    err_publish_limit: 'You can share only one invite code.',
+    err_claim_limit: 'You can use up to two invite codes.',
 
     err_network: 'Network error. Check your connection and try again.',
     err_rate_limited: 'Too many actions. Please try again later.',

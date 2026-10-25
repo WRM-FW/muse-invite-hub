@@ -744,6 +744,10 @@ export class MuseInviteApp {
               ⚠️ ${this._escape(i18n.t('pool_btn_dead', { count: spotlight.fail_reports || 0 }))}
             </button>
           </div>
+
+          <p style="margin:10px 0 0 0;font-size:11.5px;color:var(--text-muted);">
+            ${this._escape(i18n.t('limit_hint'))}
+          </p>
         </div>
       </section>
     `;

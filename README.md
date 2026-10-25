@@ -12,6 +12,7 @@
 
 ## 一、当前实现的功能
 
+- 每人（浏览器令牌）限分享 1 个码、最多使用 2 个码；界面显示限额提示，服务端强制校验。
 - 邀请码 FIFO 队列：早入池的排在最上面，队首卡展示当前顺位可用码。
 - 复制邀请码、切换到下一个可用码。
 - 发布邀请码：邀请码、剩余次数（1–30）。
@@ -55,6 +56,7 @@
 - `supabase/migrations/20261024120100_invite_code_functions.sql`：全部 RPC、限流校验和函数授权。
 - `supabase/migrations/20261024130000_status_quota_consistency.sql`：发布者强制切换状态时保持 `remaining_spots` / `claimed_count` 一致。
 - `supabase/migrations/20261025090000_drop_description_expiry.sql`：删除 `description` / `expires_at` 两列，并重建不带这两个字段的 RPC。
+- `supabase/migrations/20261025120000_usage_limits_and_ledger.sql`：每人 1 次分享、最多 2 个码；领取记录在删码后保留。
 
 ### `public.invite_codes`
 
@@ -75,7 +77,7 @@
 
 ### `public.invite_code_reports`
 
-只存 `code_id`、`reporter_hash`、`action`（`used` / `invalid`）、`created_at`，用于去重和限流。匿名客户端无任何读写权限。
+只存 `code_id`、`reporter_hash`、`action`（`used` / `invalid`）、`created_at`，用于去重、限流和“每人最多 2 个码”的计数。匿名客户端无任何读写权限。`code_id` 可为空：邀请码被删除后记录保留（`ON DELETE SET NULL`），因此删码不会重置领取上限。
 
 ### 应用迁移
 
@@ -83,8 +85,9 @@
 
 ```bash
 supabase link --project-ref fqgbdgsinlmdznnxnmml
-supabase db query --linked --file supabase/migrations/20261024120000_init_invite_codes.sql
-supabase db query --linked --file supabase/migrations/20261024120100_invite_code_functions.sql
+for f in supabase/migrations/*.sql; do
+  supabase db query --linked --file "$f"
+done
 ```
 
 也可以在 Supabase Dashboard 的 SQL Editor 中按顺序执行两个文件。迁移不是“破坏性重建”脚本；如果项目里已存在同名表，请先核对结构再执行。
@@ -114,8 +117,9 @@ supabase db query --linked --file supabase/migrations/20261024120100_invite_code
 
 ### 限流与输入处理
 
-- 发布：每个访客令牌 24 小时最多 3 条；全站 10 分钟最多 30 条。
-- 领取/反馈：每个访客令牌每小时最多 60 次；`(code_id, reporter_hash, action)` 唯一去重。
+- 发布：每个访客令牌最多 1 条当前邀请码（删除后释放名额）；全站 10 分钟最多 30 条。
+- 领取：每个访客令牌最多 2 次成功领取；领取/反馈每小时最多 60 次操作；`(code_id, reporter_hash, action)` 唯一去重。
+- 领取记录在邀请码删除后仍保留（`code_id` 自动置 NULL），因此删码不会重置“最多 2 个码”的计数。
 - 服务端统一去控制字符、大写邀请码、限制 4–64 位，剩余次数限制 1–30。
 - 搜索使用转义后的 `ILIKE` + `pg_trgm` GIN 索引，参数长度上限 64。
 - 前端所有动态文本经 HTML 转义后输出；CSP 禁止内联脚本和外部脚本。
@@ -126,6 +130,7 @@ supabase db query --linked --file supabase/migrations/20261024120100_invite_code
 - 访客令牌存在 localStorage，清空后可以绕过“按令牌”的发布/领取限流；全站突发上限仍然有效。
 - 没有 CAPTCHA / Turnstile / WAF。如果出现恶意刷量，建议在 Cloudflare 侧加 Turnstile 或 WAF 规则。
 - 3 个不同令牌可以联合把有效码标记为失效；发布者可用管理密钥恢复。没有管理员后台。
+- “1 次分享 / 2 个码”限制基于浏览器 visitor token，没有账号体系；清空 localStorage 可绕过。若要强身份限制，需要登录或 Turnstile/WAF。
 - 管理密钥按“浏览器 + 域名”保存；切换域名、清空站点数据或换浏览器会失去管理能力。若仍保留密钥，可在状态弹窗中导入恢复；密钥本身不会上传到服务器。
 - 列表一次最多加载 500 条，搜索/筛选在前端对已加载数据执行；数据量更大时应改为服务端分页搜索（RPC 已支持 `p_query`）。
 - 过期状态是读取时计算，没有定时任务回写 `status`。
@@ -210,8 +215,9 @@ wrangler pages deploy dist \
 - 匿名读取 `manage_token_hash` → 401。
 - 执行 `20261025090000` 后，`invite_codes` 列清单不再包含 `description` / `expires_at`；匿名查询这两列返回 400。
 - `list_invite_codes` 返回字段、`publish_invite_code(p_code, p_remaining, p_client_token)` 与前端调用一致，发布/领取/反馈/状态管理全部 200。
-- 测试数据已清理；社区数据保留。验证时数据库有 38 条邀请码、438 条领取/反馈报告（其中旧域名的 3 条码已被用完）。
-- 旧域名 3 条码的管理密钥已重置，明文只写入本地文件，不在仓库或聊天中；使用状态弹窗的「导入密钥」恢复管理。
+- 2026-10-25 池重置：删除 24 个可用码，恢复 15 个失效码；当前 15 条可用码，IK1D9I 第一顺位，每条恢复为 1/30。
+- 测试数据已清理；社区数据保留。当前 15 条邀请码、438 条领取/反馈报告，其中 8 条是已删除码留下的孤儿领取记录（用于维持 2 次领取上限）。
+- 旧域名 3 条码的管理密钥已重置，明文只写入本地文件，不在仓库或聊天中；使用状态弹窗的「导入密钥」恢复管理，IK1D9I 已恢复可用。
 
 ### 生产站点
 
