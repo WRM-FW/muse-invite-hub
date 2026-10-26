@@ -5,7 +5,7 @@
 - **公网地址**：<https://musecode.pages.dev/>
 - **GitHub 仓库**：<https://github.com/WRM-FW/muse-invite-hub>
 - **Cloudflare Pages 项目**：`musecode`
-- **Supabase 项目**：`MuseCodeHelp`（ref `fqgbdgsinlmdznnxnmml`，区域 Seoul）
+- **Supabase 项目**：私有配置，不写入仓库
 - **联系开发者**：3391792088@qq.com
 
 ---
@@ -118,10 +118,10 @@ RLS 已启用且没有策略，客户端无任何直接读写权限；提交走 
 
 ### 应用迁移
 
-已用 Supabase CLI（Management API）应用到 `MuseCodeHelp`：
+已用 Supabase CLI（Management API）应用迁移。项目 ref 只保留在本地 Supabase 配置中，不写入仓库：
 
 ```bash
-supabase link --project-ref fqgbdgsinlmdznnxnmml
+supabase link --project-ref <your-project-ref>
 for f in supabase/migrations/*.sql; do
   supabase db query --linked --file "$f"
 done
@@ -280,7 +280,7 @@ wrangler pages deploy dist \
 - `list_invite_codes` 返回字段、`publish_invite_code(p_code, p_remaining, p_client_token)` 与前端调用一致，发布/领取/反馈/状态管理全部 200。
 - 2026-10-25 池重置：删除 24 个可用码（含执行期间新发布的 1 条），恢复 15 个失效码；恢复的 15 条已重置为 **30/30**，IK1D9I 第一顺位。随后按所有者要求删除 `DDRJDM`、`GMSXW5` 和测试码 `QAADMIN-MVNBR0OX`；删除后为 14 条。站点开放后社区持续新增（后续验证时已 35 条），具体数量以线上为准。
 - 领取/反馈报告保留；其中包含已删除码留下的孤儿领取记录（用于维持 2 次领取上限）；删除邀请码不会退回用户的领取次数。
-- 管理密钥已简化为 **1 个通用密钥**，明文只写入本地文件 `C:\Users\28322\Desktop\muse-manage-keys.txt`，不在仓库或聊天中；状态弹窗导入一次即可管理所有邀请码，并可调整任意码的可用次数与顺位。旧文件里的 3 个专用密钥已被这个文件覆盖，专用哈希仍保留但不再需要。
+- 管理密钥已简化为 **1 个通用密钥**，明文只写入本地密钥文件（不在仓库、不写入前端代码、不发到聊天）；状态弹窗导入一次即可管理所有邀请码，并可调整任意码的可用次数与顺位。旧文件里的 3 个专用密钥已被这个文件覆盖，专用哈希仍保留但不再需要。
 
 ### 生产站点
 
