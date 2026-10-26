@@ -38,7 +38,11 @@ export class MuseInviteApp {
       statusModal: {
         isOpen: false,
         recordId: null,
-        tokenError: null
+        tokenError: null,
+        adminRemaining: '',
+        adminPosition: '',
+        saving: false,
+        error: null
       },
 
       feedbackModal: {
@@ -145,9 +149,12 @@ export class MuseInviteApp {
         return String(record.code || '').toLowerCase().includes(q);
       })
       .sort((a, b) => {
-        // 在“全部”视图下可用排在前面，同状态严格按入池时间由早到晚 (created_at 升序)
+        // 在“全部”视图下可用排在前面，同状态按管理顺位排序；顺位相同再按入池时间。
         const wDiff = (statusWeight[a.status] ?? 9) - (statusWeight[b.status] ?? 9);
         if (wDiff !== 0) return wDiff;
+        const rankDiff =
+          (a.queue_rank || Number.MAX_SAFE_INTEGER) - (b.queue_rank || Number.MAX_SAFE_INTEGER);
+        if (rankDiff !== 0) return rankDiff;
         return Date.parse(a.created_at) - Date.parse(b.created_at);
       });
   }
@@ -250,10 +257,15 @@ export class MuseInviteApp {
 
   openStatusModal(recordId) {
     this.state.feedbackModal.isOpen = false;
+    const record = this.state.records.find((r) => r.id === recordId);
     this.state.statusModal = {
       isOpen: true,
       recordId,
-      tokenError: null
+      tokenError: null,
+      adminRemaining: record ? String(record.remaining_spots) : '',
+      adminPosition: record ? String(record.queue_rank || 1) : '',
+      saving: false,
+      error: null
     };
     this.renderModals();
   }
@@ -262,9 +274,69 @@ export class MuseInviteApp {
     this.state.statusModal = {
       isOpen: false,
       recordId: null,
-      tokenError: null
+      tokenError: null,
+      adminRemaining: '',
+      adminPosition: '',
+      saving: false,
+      error: null
     };
     this.renderModals();
+  }
+
+  async handleAdminCodeSubmit(event) {
+    event.preventDefault();
+    if (this.state.statusModal.saving) return;
+
+    const recordId = this.state.statusModal.recordId;
+    if (!recordId) return;
+
+    const remainingEl = document.getElementById('admin-remaining-input');
+    const positionEl = document.getElementById('admin-position-input');
+    const remaining = Number(remainingEl ? remainingEl.value : this.state.statusModal.adminRemaining);
+    const position = Number(positionEl ? positionEl.value : this.state.statusModal.adminPosition);
+    const total = Math.max(this.state.records.length, 1);
+
+    this.state.statusModal.adminRemaining = String(remainingEl ? remainingEl.value : '');
+    this.state.statusModal.adminPosition = String(positionEl ? positionEl.value : '');
+
+    if (!Number.isInteger(remaining) || remaining < 0 || remaining > 30) {
+      this.state.statusModal.error = 'err_admin_remaining';
+      this.renderStatusModal();
+      return;
+    }
+    if (!Number.isInteger(position) || position < 1 || position > total) {
+      this.state.statusModal.error = 'err_admin_position';
+      this.renderStatusModal();
+      return;
+    }
+
+    this.state.statusModal.saving = true;
+    this.state.statusModal.error = null;
+    this.renderStatusModal();
+
+    const res = await inviteService.updateCodeAdmin({
+      id: recordId,
+      remaining,
+      position
+    });
+
+    if (res.error) {
+      this.state.statusModal.saving = false;
+      this.state.statusModal.error = res.error.messageKey || 'err_generic';
+      this.renderStatusModal();
+      return;
+    }
+
+    this.state.statusModal.saving = false;
+    this.closeStatusModal();
+    await this.loadRecords(true);
+    this.pushToast(
+      i18n.t('admin_success', {
+        code: res.data.code,
+        remaining: res.data.remaining_spots,
+        position: res.data.queue_rank
+      })
+    );
   }
 
   openFeedbackModal(recordId) {
@@ -591,6 +663,20 @@ export class MuseInviteApp {
           const err = document.getElementById('feedback-error');
           if (err) err.remove();
         }
+      } else if (target.id === 'admin-remaining-input') {
+        this.state.statusModal.adminRemaining = target.value;
+        if (this.state.statusModal.error) {
+          this.state.statusModal.error = null;
+          const err = document.getElementById('admin-edit-error');
+          if (err) err.remove();
+        }
+      } else if (target.id === 'admin-position-input') {
+        this.state.statusModal.adminPosition = target.value;
+        if (this.state.statusModal.error) {
+          this.state.statusModal.error = null;
+          const err = document.getElementById('admin-edit-error');
+          if (err) err.remove();
+        }
       }
     });
 
@@ -610,6 +696,8 @@ export class MuseInviteApp {
         this.handleFormSubmit(e);
       } else if (e.target && e.target.id === 'feedback-form') {
         this.handleFeedbackSubmit(e);
+      } else if (e.target && e.target.id === 'admin-code-form') {
+        this.handleAdminCodeSubmit(e);
       }
     });
 
@@ -659,7 +747,13 @@ export class MuseInviteApp {
             data-action="scroll-section"
             data-target="section-hero"
           >
-            <span class="brand-mark" aria-hidden="true">M</span>
+            <img
+              class="brand-mark"
+              src="/favicon.ico"
+              alt=""
+              aria-hidden="true"
+              style="object-fit:cover;background:none;padding:0;display:block;"
+            />
             <div>
               <div style="font-weight:800;font-size:16.5px;line-height:1.2;">
                 ${this._escape(i18n.t('brand_name'))}
@@ -1061,6 +1155,8 @@ export class MuseInviteApp {
     const isAvailable = record.status === INVITE_STATUS.AVAILABLE;
     const isUsed = record.status === INVITE_STATUS.USED;
     const isCopied = this.state.copiedId === record.id;
+    const displayRank =
+      Number.isFinite(record.queue_rank) && record.queue_rank > 0 ? record.queue_rank : queueIndex;
 
     let statusBadgeHtml = '';
     if (isAvailable) {
@@ -1104,7 +1200,7 @@ export class MuseInviteApp {
             ${
               isAvailable
                 ? `<span style="font-size:11.5px;font-weight:700;color:var(--brand-primary-text);background:var(--brand-primary-soft);padding:2px 6px;border-radius:4px;">
-                    ${this._escape(i18n.t('queue_prefix'))}${queueIndex}
+                    ${this._escape(i18n.t('queue_prefix'))}${displayRank}
                   </span>`
                 : ''
             }
@@ -1299,7 +1395,7 @@ export class MuseInviteApp {
     const el = document.getElementById('modal-mount');
     if (!el) return;
 
-    const { isOpen, recordId } = this.state.statusModal;
+    const { isOpen, recordId, tokenError, adminRemaining, adminPosition, saving, error } = this.state.statusModal;
     if (!isOpen || !recordId) {
       el.innerHTML = '';
       return;
@@ -1312,7 +1408,9 @@ export class MuseInviteApp {
     }
 
     const hasToken = Boolean(getManageToken(record.id) || getAdminToken());
-    const tokenError = this.state.statusModal.tokenError;
+    const totalCodes = Math.max(this.state.records.length, 1);
+    const remainingValue = adminRemaining !== '' ? adminRemaining : String(record.remaining_spots);
+    const positionValue = adminPosition !== '' ? adminPosition : String(record.queue_rank || 1);
     const statusButtons = `
       <div style="display:flex;flex-direction:column;gap:8px;">
         <button
@@ -1355,6 +1453,55 @@ export class MuseInviteApp {
           ${this._escape(i18n.t('modal_clear_token'))}
         </button>
       </div>
+    `;
+    const adminPanel = `
+      <form id="admin-code-form" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-subtle);display:flex;flex-direction:column;gap:8px;">
+        <div style="font-size:13px;font-weight:700;color:var(--text-secondary);">
+          ${this._escape(i18n.t('admin_title'))}
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text-secondary);font-weight:600;">
+            ${this._escape(i18n.t('admin_remaining_label'))}
+            <input
+              id="admin-remaining-input"
+              type="number"
+              min="0"
+              max="30"
+              class="input-field"
+              style="width:92px;text-align:center;"
+              value="${this._escape(remainingValue)}"
+            />
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text-secondary);font-weight:600;">
+            ${this._escape(i18n.t('admin_position_label'))}
+            <input
+              id="admin-position-input"
+              type="number"
+              min="1"
+              max="${totalCodes}"
+              class="input-field"
+              style="width:92px;text-align:center;"
+              value="${this._escape(positionValue)}"
+            />
+          </label>
+        </div>
+        <p style="margin:0;font-size:11.5px;color:var(--text-muted);">
+          ${this._escape(i18n.t('admin_position_hint'))}
+        </p>
+        ${
+          error
+            ? `<div id="admin-edit-error" role="alert" style="font-size:12.5px;color:var(--danger-text);font-weight:600;">
+                ⚠ ${this._escape(i18n.t(error))}
+              </div>`
+            : ''
+        }
+        <button type="submit" class="btn btn-primary" style="padding:9px 12px;" ${saving ? 'disabled' : ''}>
+          ${this._escape(saving ? i18n.t('admin_saving') : i18n.t('admin_save'))}
+        </button>
+        <p style="margin:0;font-size:11.5px;color:var(--text-muted);">
+          ${this._escape(i18n.t('admin_hint'))}
+        </p>
+      </form>
     `;
     const importPanel = `
       <div style="display:flex;flex-direction:column;gap:8px;">
@@ -1413,7 +1560,7 @@ export class MuseInviteApp {
             hasToken
               ? `<p style="margin:0 0 10px 0;font-size:12px;color:var(--status-available-text);font-weight:600;">
                   ${this._escape(i18n.t('modal_has_token'))}
-                </p>${statusButtons}`
+                </p>${statusButtons}${adminPanel}`
               : importPanel
           }
         </div>

@@ -6,7 +6,7 @@ export const LOCALES = {
   'zh-CN': {
     meta_title: 'Muse 邀请码互助站',
     brand_name: 'Muse 邀请码互助站',
-    brand_sub: '按入池时间排队 · 次数用完自动归入已失效',
+    brand_sub: '按队列顺位 · 次数用完自动归入已失效',
     nav_contact: '联系开发者',
     nav_refresh: '刷新',
     refresh_done: '列表已刷新',
@@ -17,7 +17,7 @@ export const LOCALES = {
 
     // 首屏队首邀请码卡片
     pool_title: '当前顺位可用邀请码',
-    pool_subtitle: '早入池优先展示 · 注册 48 小时内在 Settings → Redeem 输入，双方各领 10 亿词元',
+    pool_subtitle: '按队列顺位展示 · 注册 48 小时内在 Settings → Redeem 输入，双方各领 10 亿词元',
     pool_spots_left: '剩余 {remaining} / {total} 次',
     pool_btn_copy: '复制邀请码',
     pool_btn_copied: '已复制',
@@ -33,7 +33,7 @@ export const LOCALES = {
     publish_code_placeholder: '输入邀请码 (如 DEMO-9NF4F6)',
     publish_spots_label: '剩余次数',
     publish_submit_btn: '立即分享',
-    publish_demo_hint: '按入池先后排队 · 每人限分享 1 个、最多使用 2 个码',
+    publish_demo_hint: '新码排在队尾 · 每人限分享 1 个、最多使用 2 个码',
     publish_success: '已入池排队：{code}（管理密钥已保存在本浏览器）',
 
     // 校验错误
@@ -60,7 +60,7 @@ export const LOCALES = {
     load_error_title: '邀请码加载失败',
 
     // 邀请码列表
-    list_title: '邀请码队列（早入池排在最上边）',
+    list_title: '邀请码队列（按顺位排序）',
     search_placeholder: '搜索邀请码…',
     search_clear: '清除',
     filter_available: '可用',
@@ -107,7 +107,17 @@ export const LOCALES = {
 
     // 状态切换弹窗
     modal_title: '切换邀请码状态',
-    modal_desc: '只有持有管理密钥的人可以切换状态；没有密钥时可在下方导入通用密钥。其他访客可使用「我已使用」或失效反馈。',
+    modal_desc: '只有持有管理密钥的人可以切换状态、调整可用次数和排列顺位；没有密钥时可在下方导入通用密钥。其他访客可使用「我已使用」或反馈给开发者。',
+    admin_title: '额度与顺位',
+    admin_remaining_label: '可使用次数',
+    admin_position_label: '排列顺位',
+    admin_position_hint: '数字越小越靠前（按全部邀请码排序）',
+    admin_hint: '0 次会自动失效；已失效码设为 >0 次会自动恢复可用。领取记录不会因此退回。',
+    admin_save: '保存额度与顺位',
+    admin_saving: '保存中…',
+    admin_success: '已更新 {code}：剩余 {remaining} 次，顺位 #{position}',
+    err_admin_remaining: '可使用次数需为 0–30',
+    err_admin_position: '排列顺位无效',
     modal_has_token: '本浏览器已保存管理密钥（通用或该码专用）。',
     modal_no_token: '本浏览器没有这个邀请码的管理密钥。可以导入通用管理密钥，一次管理所有邀请码。',
     modal_token_placeholder: '粘贴 48 位通用管理密钥',
@@ -131,7 +141,7 @@ export const LOCALES = {
   'en-US': {
     meta_title: 'Muse Invite Code Hub',
     brand_name: 'Muse Invite Code Hub',
-    brand_sub: 'FIFO Queue (Oldest First) · Auto-Expires at 0 Uses',
+    brand_sub: 'Queue Rank · Auto-Expires at 0 Uses',
     nav_contact: 'Contact',
     nav_refresh: 'Refresh',
     refresh_done: 'List refreshed',
@@ -142,7 +152,7 @@ export const LOCALES = {
 
     // Top queue card
     pool_title: 'Next Up in Queue',
-    pool_subtitle: 'Oldest codes prioritized first · Redeem in Muse Settings → Redeem within 48h for 1B tokens each',
+    pool_subtitle: 'Ordered by queue rank · Redeem in Muse Settings → Redeem within 48h for 1B tokens each',
     pool_spots_left: '{remaining} / {total} uses left',
     pool_btn_copy: 'Copy Code',
     pool_btn_copied: 'Copied',
@@ -158,7 +168,7 @@ export const LOCALES = {
     publish_code_placeholder: 'Enter invite code (e.g. DEMO-9NF4F6)',
     publish_spots_label: 'Uses left',
     publish_submit_btn: 'Add to Queue',
-    publish_demo_hint: 'FIFO queue · 1 share and up to 2 codes per person',
+    publish_demo_hint: 'New codes append to the queue · 1 share and up to 2 codes per person',
     publish_success: 'Added to queue: {code} (management key saved in this browser)',
 
     // Errors
@@ -184,7 +194,7 @@ export const LOCALES = {
     load_error_title: 'Could not load invite codes',
 
     // Directory
-    list_title: 'Invite Code Queue (Oldest First)',
+    list_title: 'Invite Code Queue (By Rank)',
     search_placeholder: 'Search code…',
     search_clear: 'Clear',
     filter_available: 'Available',
@@ -231,7 +241,17 @@ export const LOCALES = {
 
     // Modal
     modal_title: 'Switch Code Status',
-    modal_desc: 'Only someone holding a management key can switch the status. If no key is saved, import the universal key below. Other visitors can use “I used this” or the failure feedback.',
+    modal_desc: 'Only someone holding a management key can switch the status, adjust remaining uses and change the queue rank. If no key is saved, import the universal key below. Other visitors can use “I used this” or report to the developer.',
+    admin_title: 'Uses & queue rank',
+    admin_remaining_label: 'Uses left',
+    admin_position_label: 'Queue rank',
+    admin_position_hint: 'Lower numbers come first (ranked across all codes)',
+    admin_hint: '0 uses expires the code; setting an expired code above 0 makes it available again. Claim history is not refunded.',
+    admin_save: 'Save uses and rank',
+    admin_saving: 'Saving…',
+    admin_success: 'Updated {code}: {remaining} uses left, queue rank #{position}',
+    err_admin_remaining: 'Uses left must be between 0 and 30',
+    err_admin_position: 'Invalid queue rank',
     modal_has_token: 'A management key (universal or code-specific) is saved in this browser.',
     modal_no_token: 'This browser does not have a management key for this code. Import the universal management key to manage every code at once.',
     modal_token_placeholder: 'Paste the 48-character universal management key',

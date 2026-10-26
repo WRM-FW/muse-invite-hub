@@ -21,6 +21,8 @@ const RPC_ERRORS = {
   invalid_spots: { fieldErrors: { remainingSpots: 'err_spots_range' } },
   publish_limit_reached: { messageKey: 'err_publish_limit' },
   claim_limit_reached: { messageKey: 'err_claim_limit' },
+  invalid_remaining: { messageKey: 'err_admin_remaining' },
+  invalid_position: { messageKey: 'err_admin_position' },
   rate_limited: { messageKey: 'err_rate_limited' },
   invalid_reason: { messageKey: 'err_feedback_reason' },
   note_too_long: { messageKey: 'err_feedback_note_long' },
@@ -48,6 +50,7 @@ function normalizeRecord(item) {
     remaining_spots: remainingSpots,
     claimed_count: toNumber(item.claimed_count, Math.max(0, totalSpots - remainingSpots)),
     fail_reports: toNumber(item.fail_reports, 0),
+    queue_rank: toNumber(item.queue_rank, 0),
     is_local_session: Boolean(getManageToken(item.id))
   };
   normalized.status = resolveEffectiveStatus(normalized);
@@ -122,7 +125,11 @@ class InviteCodeService {
     }
 
     const records = (Array.isArray(listRes.data) ? listRes.data : []).map(normalizeRecord);
-    this._cache = [...records].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
+    this._cache = [...records].sort(
+      (a, b) =>
+        (a.queue_rank || Number.MAX_SAFE_INTEGER) - (b.queue_rank || Number.MAX_SAFE_INTEGER) ||
+        Date.parse(a.created_at) - Date.parse(b.created_at)
+    );
 
     let stats = computeStats(records);
     if (!statsRes.error) {
@@ -206,7 +213,9 @@ class InviteCodeService {
     const { manage_token: _manageToken, ...safeRow } = row;
     const record = normalizeRecord(safeRow);
     this._cache = [...this._cache.filter((item) => item.id !== record.id), record].sort(
-      (a, b) => Date.parse(a.created_at) - Date.parse(b.created_at)
+      (a, b) =>
+        (a.queue_rank || Number.MAX_SAFE_INTEGER) - (b.queue_rank || Number.MAX_SAFE_INTEGER) ||
+        Date.parse(a.created_at) - Date.parse(b.created_at)
     );
 
     return { data: record, error: null };
@@ -241,6 +250,37 @@ class InviteCodeService {
     }
 
     const { data, error: rpcError } = await client.rpc(rpcName, params);
+    if (rpcError) {
+      return { data: null, error: mapRpcError(rpcError) };
+    }
+
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) {
+      return { data: null, error: { code: 'not_found', messageKey: 'err_not_found' } };
+    }
+
+    return { data: normalizeRecord(row), error: null };
+  }
+
+  /**
+   * Management-key edit of remaining uses and global queue rank.
+   */
+  async updateCodeAdmin({ id, remaining, position }) {
+    const { client, error } = this._clientOrError();
+    if (error) return { data: null, error };
+
+    const manageToken = getManageToken(id) || getAdminToken();
+    if (!manageToken) {
+      return { data: null, error: { code: 'not_authorized', messageKey: 'err_not_authorized' } };
+    }
+
+    const { data, error: rpcError } = await client.rpc('update_invite_code_admin', {
+      p_id: id,
+      p_manage_token: manageToken,
+      p_remaining: Number(remaining),
+      p_position: Number(position)
+    });
+
     if (rpcError) {
       return { data: null, error: mapRpcError(rpcError) };
     }
