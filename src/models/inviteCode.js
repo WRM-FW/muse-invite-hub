@@ -22,15 +22,14 @@ export const FILTER_STATUS = Object.freeze({
 export function resolveEffectiveStatus(record) {
   if (!record) return INVITE_STATUS.EXPIRED;
   if (record.status === INVITE_STATUS.EXPIRED) return INVITE_STATUS.EXPIRED;
+  // 数据库里的 used 状态优先，即使剩余次数为 0 也显示已使用。
+  if (record.status === INVITE_STATUS.USED) return INVITE_STATUS.USED;
   if (typeof record.fail_reports === 'number' && record.fail_reports >= 3) {
     return INVITE_STATUS.EXPIRED;
   }
   // 次数用完后自动放入“已失效”
   if (typeof record.remaining_spots === 'number' && record.remaining_spots <= 0) {
     return INVITE_STATUS.EXPIRED;
-  }
-  if (record.status === INVITE_STATUS.USED) {
-    return INVITE_STATUS.USED;
   }
   return INVITE_STATUS.AVAILABLE;
 }

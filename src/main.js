@@ -7,11 +7,10 @@
 import { i18n } from './i18n/index.js';
 import { inviteService } from './services/inviteService.js';
 import {
+  clearLegacyManageTokens,
   getAdminToken,
-  getManageToken,
   importAdminToken,
-  removeAdminToken,
-  removeManageToken
+  removeAdminToken
 } from './services/tokenStore.js';
 import { INVITE_STATUS, FILTER_STATUS, validateInviteSubmission } from './models/inviteCode.js';
 
@@ -64,6 +63,7 @@ export class MuseInviteApp {
   }
 
   async init() {
+    clearLegacyManageTokens();
     document.documentElement.lang = i18n.getLocale();
     document.title = i18n.t('meta_title');
 
@@ -431,13 +431,7 @@ export class MuseInviteApp {
 
   clearStatusModalToken(recordId) {
     if (!recordId) return;
-    // Clear the code-specific key first; if only the universal key exists,
-    // clear that. A second click is needed when both are present.
-    if (getManageToken(recordId)) {
-      removeManageToken(recordId);
-    } else {
-      removeAdminToken();
-    }
+    removeAdminToken();
     this.state.statusModal.tokenError = null;
     this.renderModals();
   }
@@ -1407,7 +1401,7 @@ export class MuseInviteApp {
       return;
     }
 
-    const hasToken = Boolean(getManageToken(record.id) || getAdminToken());
+    const hasToken = Boolean(getAdminToken());
     const totalCodes = Math.max(this.state.records.length, 1);
     const remainingValue = adminRemaining !== '' ? adminRemaining : String(record.remaining_spots);
     const positionValue = adminPosition !== '' ? adminPosition : String(record.queue_rank || 1);

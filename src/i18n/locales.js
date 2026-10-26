@@ -34,7 +34,7 @@ export const LOCALES = {
     publish_spots_label: '剩余次数',
     publish_submit_btn: '立即分享',
     publish_demo_hint: '新码排在队尾 · 每人限分享 1 个、最多使用 2 个码',
-    publish_success: '已入池排队：{code}（管理密钥已保存在本浏览器）',
+    publish_success: '已入池排队：{code}',
 
     // 校验错误
     err_code_required: '请输入邀请码',
@@ -107,7 +107,7 @@ export const LOCALES = {
 
     // 状态切换弹窗
     modal_title: '切换邀请码状态',
-    modal_desc: '只有持有管理密钥的人可以切换状态、调整可用次数和排列顺位；没有密钥时可在下方导入通用密钥。其他访客可使用「我已使用」或反馈给开发者。',
+    modal_desc: '只有持有通用管理密钥的人可以切换状态、调整可用次数和排列顺位；在下方导入通用密钥。其他访客可使用「我已使用」或反馈给开发者。',
     admin_title: '额度与顺位',
     admin_remaining_label: '可使用次数',
     admin_position_label: '排列顺位',
@@ -118,11 +118,11 @@ export const LOCALES = {
     admin_success: '已更新 {code}：剩余 {remaining} 次，顺位 #{position}',
     err_admin_remaining: '可使用次数需为 0–30',
     err_admin_position: '排列顺位无效',
-    modal_has_token: '本浏览器已保存管理密钥（通用或该码专用）。',
-    modal_no_token: '本浏览器没有这个邀请码的管理密钥。可以导入通用管理密钥，一次管理所有邀请码。',
+    modal_has_token: '本浏览器已保存通用管理密钥。',
+    modal_no_token: '本浏览器没有通用管理密钥。导入后可以管理所有邀请码。',
     modal_token_placeholder: '粘贴 48 位通用管理密钥',
     modal_import_token: '导入通用密钥',
-    modal_clear_token: '清除本机密钥',
+    modal_clear_token: '清除本机通用密钥',
     err_manage_token_format: '管理密钥格式不正确（应为 48 位十六进制字符）',
     toast_manage_token_saved: '通用管理密钥已保存，可以管理所有邀请码',
 
@@ -169,7 +169,7 @@ export const LOCALES = {
     publish_spots_label: 'Uses left',
     publish_submit_btn: 'Add to Queue',
     publish_demo_hint: 'New codes append to the queue · 1 share and up to 2 codes per person',
-    publish_success: 'Added to queue: {code} (management key saved in this browser)',
+    publish_success: 'Added to queue: {code}',
 
     // Errors
     err_code_required: 'Please enter an invite code',
@@ -241,7 +241,7 @@ export const LOCALES = {
 
     // Modal
     modal_title: 'Switch Code Status',
-    modal_desc: 'Only someone holding a management key can switch the status, adjust remaining uses and change the queue rank. If no key is saved, import the universal key below. Other visitors can use “I used this” or report to the developer.',
+    modal_desc: 'Only someone holding the universal management key can switch the status, adjust remaining uses and change the queue rank. Import the universal key below. Other visitors can use “I used this” or report to the developer.',
     admin_title: 'Uses & queue rank',
     admin_remaining_label: 'Uses left',
     admin_position_label: 'Queue rank',
@@ -252,11 +252,11 @@ export const LOCALES = {
     admin_success: 'Updated {code}: {remaining} uses left, queue rank #{position}',
     err_admin_remaining: 'Uses left must be between 0 and 30',
     err_admin_position: 'Invalid queue rank',
-    modal_has_token: 'A management key (universal or code-specific) is saved in this browser.',
-    modal_no_token: 'This browser does not have a management key for this code. Import the universal management key to manage every code at once.',
+    modal_has_token: 'The universal management key is saved in this browser.',
+    modal_no_token: 'This browser does not have the universal management key. Import it to manage every code.',
     modal_token_placeholder: 'Paste the 48-character universal management key',
     modal_import_token: 'Import universal key',
-    modal_clear_token: 'Forget keys on this browser',
+    modal_clear_token: 'Forget universal key on this browser',
     err_manage_token_format: 'Invalid management key (expected 48 hex characters)',
     toast_manage_token_saved: 'Universal management key saved. You can manage every code.',
 

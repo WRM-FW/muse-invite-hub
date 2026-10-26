@@ -1,14 +1,16 @@
 /**
  * @fileoverview 浏览器本地令牌。
  * - visitor token：随机生成，仅用于数据库限流与“重复领取/重复反馈”去重。
- * - management token：发布成功后由数据库一次性返回，用于发布者之后切换状态。
- * 两者都不是账号身份，也不会被发送到第三方。
+ * - universal admin token：由网站所有者导入一次，可管理所有邀请码。
+ * - published ids：本浏览器发布过的记录 id，仅用于显示“我发布的”标记。
+ * 都不是账号身份，也不会被发送到第三方。
  */
 
 const VISITOR_KEY = 'muse_invite_hub_visitor_token_v1';
-const MANAGE_KEY = 'muse_invite_hub_manage_tokens_v1';
 const ADMIN_KEY = 'muse_invite_hub_admin_token_v1';
-const MAX_MANAGE_ENTRIES = 200;
+const PUBLISHED_KEY = 'muse_invite_hub_published_ids_v1';
+const LEGACY_MANAGE_KEY = 'muse_invite_hub_manage_tokens_v1';
+const MAX_PUBLISHED = 200;
 
 function readStorage(key) {
   try {
@@ -22,8 +24,7 @@ function writeStorage(key, value) {
   try {
     window.localStorage.setItem(key, value);
   } catch (_err) {
-    // Storage may be unavailable (private mode / quota). The app still works
-    // for reading; publishing falls back to an in-memory token.
+    // Storage may be unavailable (private mode / quota).
   }
 }
 
@@ -49,53 +50,42 @@ export function getVisitorToken() {
   return memoryVisitorToken;
 }
 
-function readManageTokens() {
-  const raw = readStorage(MANAGE_KEY);
-  if (!raw) return {};
+/** Remove the old per-code management token store (universal key only now). */
+export function clearLegacyManageTokens() {
+  try {
+    window.localStorage.removeItem(LEGACY_MANAGE_KEY);
+  } catch (_err) {
+    // ignore storage errors
+  }
+}
+
+function readPublishedIds() {
+  const raw = readStorage(PUBLISHED_KEY);
+  if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string' && id) : [];
   } catch (_err) {
-    return {};
+    return [];
   }
 }
 
-function writeManageTokens(map) {
-  writeStorage(MANAGE_KEY, JSON.stringify(map));
+function writePublishedIds(ids) {
+  writeStorage(PUBLISHED_KEY, JSON.stringify(ids.slice(-MAX_PUBLISHED)));
 }
 
-export function saveManageToken(recordId, token) {
-  if (!recordId || !token) return;
-  const map = readManageTokens();
-  map[recordId] = token;
-  const ids = Object.keys(map);
-  if (ids.length > MAX_MANAGE_ENTRIES) {
-    ids.slice(0, ids.length - MAX_MANAGE_ENTRIES).forEach((id) => {
-      delete map[id];
-    });
-  }
-  writeManageTokens(map);
-}
-
-export function getManageToken(recordId) {
-  if (!recordId) return null;
-  const token = readManageTokens()[recordId];
-  return typeof token === 'string' && token.length >= 32 ? token : null;
-}
-
-export function importManageToken(recordId, token) {
-  const normalized = String(token || '').trim().toLowerCase();
-  if (!recordId || !/^[a-f0-9]{48}$/.test(normalized)) return false;
-  saveManageToken(recordId, normalized);
-  return true;
-}
-
-export function removeManageToken(recordId) {
+export function markPublished(recordId) {
   if (!recordId) return;
-  const map = readManageTokens();
-  if (!Object.prototype.hasOwnProperty.call(map, recordId)) return;
-  delete map[recordId];
-  writeManageTokens(map);
+  const ids = readPublishedIds();
+  if (!ids.includes(recordId)) {
+    ids.push(recordId);
+    writePublishedIds(ids);
+  }
+}
+
+export function isPublished(recordId) {
+  if (!recordId) return false;
+  return readPublishedIds().includes(recordId);
 }
 
 export function getAdminToken() {

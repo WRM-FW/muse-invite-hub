@@ -11,7 +11,7 @@
 
 import { INVITE_STATUS, resolveEffectiveStatus, validateInviteSubmission } from '../models/inviteCode.js';
 import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient.js';
-import { getAdminToken, getManageToken, getVisitorToken, saveManageToken } from './tokenStore.js';
+import { getAdminToken, getVisitorToken, isPublished, markPublished } from './tokenStore.js';
 
 const LIST_LIMIT = 500;
 
@@ -51,7 +51,7 @@ function normalizeRecord(item) {
     claimed_count: toNumber(item.claimed_count, Math.max(0, totalSpots - remainingSpots)),
     fail_reports: toNumber(item.fail_reports, 0),
     queue_rank: toNumber(item.queue_rank, 0),
-    is_local_session: Boolean(getManageToken(item.id))
+    is_local_session: isPublished(item.id)
   };
   normalized.status = resolveEffectiveStatus(normalized);
   return normalized;
@@ -206,12 +206,10 @@ class InviteCodeService {
       return { data: null, error: { code: 'unknown_error', messageKey: 'err_generic' } };
     }
 
-    if (row.manage_token) {
-      saveManageToken(row.id, row.manage_token);
-    }
-    // Never keep the management token in application state/render data.
-    const { manage_token: _manageToken, ...safeRow } = row;
-    const record = normalizeRecord(safeRow);
+    // The publish RPC no longer issues a per-code token; only the universal
+    // admin key can manage codes. Remember the id for the "我发布的" badge.
+    markPublished(row.id);
+    const record = normalizeRecord(row);
     this._cache = [...this._cache.filter((item) => item.id !== record.id), record].sort(
       (a, b) =>
         (a.queue_rank || Number.MAX_SAFE_INTEGER) - (b.queue_rank || Number.MAX_SAFE_INTEGER) ||
@@ -237,9 +235,8 @@ class InviteCodeService {
       rpcName = 'claim_invite_code_use';
       params = { p_id: id, p_reporter_token: getVisitorToken() };
     } else if (actionType === 'set_status') {
-      // Prefer the code-specific token saved at publish time; otherwise use
-      // the universal key imported by the site owner.
-      const manageToken = getManageToken(id) || getAdminToken();
+      // Only the universal key imported by the site owner can manage codes.
+      const manageToken = getAdminToken();
       if (!manageToken) {
         return { data: null, error: { code: 'not_authorized', messageKey: 'err_not_authorized' } };
       }
@@ -269,7 +266,7 @@ class InviteCodeService {
     const { client, error } = this._clientOrError();
     if (error) return { data: null, error };
 
-    const manageToken = getManageToken(id) || getAdminToken();
+    const manageToken = getAdminToken();
     if (!manageToken) {
       return { data: null, error: { code: 'not_authorized', messageKey: 'err_not_authorized' } };
     }
