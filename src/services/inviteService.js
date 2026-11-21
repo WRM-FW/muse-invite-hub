@@ -13,7 +13,8 @@ import { INVITE_STATUS, resolveEffectiveStatus, validateInviteSubmission } from 
 import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient.js';
 import { getAdminToken, getVisitorToken, isPublished, markPublished } from './tokenStore.js';
 
-const LIST_LIMIT = 500;
+const LIST_PAGE_SIZE = 500;
+const LIST_MAX_RECORDS = 10000;
 
 const RPC_ERRORS = {
   duplicate_code: { messageKey: 'err_code_duplicate', fieldErrors: { code: 'err_code_duplicate' } },
@@ -111,20 +112,28 @@ class InviteCodeService {
       return { data: [], stats: computeStats([]), error };
     }
 
-    const [listRes, statsRes] = await Promise.all([
-      client.rpc('list_invite_codes', {
+    const statsPromise = client.rpc('invite_stats');
+    const rows = [];
+
+    for (let offset = 0; offset < LIST_MAX_RECORDS; offset += LIST_PAGE_SIZE) {
+      const { data, error } = await client.rpc('list_invite_codes', {
         p_status: 'all',
         p_query: '',
-        p_limit: LIST_LIMIT
-      }),
-      client.rpc('invite_stats')
-    ]);
+        p_limit: LIST_PAGE_SIZE,
+        p_offset: offset
+      });
 
-    if (listRes.error) {
-      return { data: [], stats: computeStats([]), error: mapRpcError(listRes.error) };
+      if (error) {
+        return { data: [], stats: computeStats([]), error: mapRpcError(error) };
+      }
+
+      const page = Array.isArray(data) ? data : [];
+      rows.push(...page);
+      if (page.length < LIST_PAGE_SIZE) break;
     }
 
-    const records = (Array.isArray(listRes.data) ? listRes.data : []).map(normalizeRecord);
+    const statsRes = await statsPromise;
+    const records = rows.map(normalizeRecord);
     this._cache = [...records].sort(
       (a, b) =>
         (a.queue_rank || Number.MAX_SAFE_INTEGER) - (b.queue_rank || Number.MAX_SAFE_INTEGER) ||
