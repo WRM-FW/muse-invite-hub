@@ -40,7 +40,7 @@ export function resolveEffectiveStatus(record) {
 export function validateInviteSubmission(input, existingRecords = []) {
   const errors = {};
   const rawCode = typeof input?.code === 'string' ? input.code.trim() : '';
-  const normalizedCode = rawCode.replace(/\s+/g, '-').toUpperCase();
+  const normalizedCode = rawCode.replace(/\s+/g, '').toUpperCase();
 
   let spots = 30;
   if (input?.remainingSpots !== undefined && input?.remainingSpots !== '') {
@@ -52,13 +52,17 @@ export function validateInviteSubmission(input, existingRecords = []) {
 
   if (!rawCode) {
     errors.code = 'err_code_required';
-  } else if (normalizedCode.length < 4 || normalizedCode.length > 48) {
+  } else if (normalizedCode.length !== 6) {
     errors.code = 'err_code_length';
-  } else if (!/^[A-Z0-9][A-Z0-9-_]{2,46}[A-Z0-9]$/.test(normalizedCode)) {
+  } else if (!/^[A-Z0-9]{6}$/.test(normalizedCode)) {
     errors.code = 'err_code_format';
   } else {
+    // Compare canonical forms so legacy hyphenated codes cannot be re-added.
     const duplicate = existingRecords.some(
-      (item) => String(item.code || '').toUpperCase() === normalizedCode
+      (item) =>
+        String(item.code || '')
+          .toUpperCase()
+          .replace(/[^A-Z0-9]/g, '') === normalizedCode
     );
     if (duplicate) {
       errors.code = 'err_code_duplicate';

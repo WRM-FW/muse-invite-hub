@@ -143,7 +143,14 @@ export class MuseInviteApp {
 
     return this.state.records
       .filter((record) => {
-        const statusMatch = filter === FILTER_STATUS.ALL ? true : record.status === filter;
+        let statusMatch = true;
+        if (filter === FILTER_STATUS.USED) {
+          // "已使用" merges the former used + expired entries.
+          statusMatch =
+            record.status === INVITE_STATUS.USED || record.status === INVITE_STATUS.EXPIRED;
+        } else if (filter !== FILTER_STATUS.ALL) {
+          statusMatch = record.status === filter;
+        }
         if (!statusMatch) return false;
         if (!q) return true;
         return String(record.code || '').toLowerCase().includes(q);
@@ -733,59 +740,36 @@ export class MuseInviteApp {
     if (!el) return;
 
     el.innerHTML = `
-      <header class="site-header">
-        <div class="header-inner" style="max-width:920px;">
+      <header class="app-header">
+        <a
+          href="#section-hero"
+          class="brand"
+          data-action="scroll-section"
+          data-target="section-hero"
+        >
+          <span class="logo-pill" aria-hidden="true">
+            <img src="/logo-256.png" alt="" />
+          </span>
+          <span class="brand-name">${this._escape(i18n.t('brand_name'))}</span>
+        </a>
+
+        <nav class="head-actions" aria-label="Navigation">
+          <button type="button" class="btn-nav" data-action="refresh-data" aria-label="${this._escape(i18n.t('nav_refresh'))}">
+            <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            <span class="nav-label">${this._escape(i18n.t('nav_refresh'))}</span>
+          </button>
           <a
-            href="#section-hero"
-            class="brand-group"
-            data-action="scroll-section"
-            data-target="section-hero"
+            href="mailto:3391792088@qq.com?subject=Muse%20Invite%20Code%20Hub%20Feedback"
+            class="btn-nav"
+            aria-label="${this._escape(i18n.t('nav_contact'))}"
           >
-            <img
-              class="brand-mark"
-              src="/favicon.ico"
-              alt=""
-              aria-hidden="true"
-              style="object-fit:cover;background:none;padding:0;display:block;"
-            />
-            <div>
-              <div style="font-weight:800;font-size:16.5px;line-height:1.2;">
-                ${this._escape(i18n.t('brand_name'))}
-              </div>
-              <div style="font-size:12px;color:var(--text-muted);">
-                ${this._escape(i18n.t('brand_sub'))}
-              </div>
-            </div>
+            <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>
+            <span class="nav-label">${this._escape(i18n.t('nav_contact'))}</span>
           </a>
-
-          <nav aria-label="Navigation" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <button
-              type="button"
-              class="btn btn-outline"
-              style="padding:6px 10px;font-size:13px;"
-              data-action="refresh-data"
-            >
-              ↻ ${this._escape(i18n.t('nav_refresh'))}
-            </button>
-
-            <a
-              href="mailto:3391792088@qq.com?subject=Muse%20Invite%20Code%20Hub%20Feedback"
-              class="btn btn-outline"
-              style="padding:6px 10px;font-size:13px;"
-            >
-              ✉️ ${this._escape(i18n.t('nav_contact'))}
-            </a>
-
-            <button
-              type="button"
-              class="btn btn-soft"
-              style="padding:6px 12px;font-size:13px;"
-              data-action="toggle-lang"
-            >
-              🌐 ${this._escape(i18n.t('lang_current'))} / ${this._escape(i18n.t('lang_target'))}
-            </button>
-          </nav>
-        </div>
+          <button type="button" class="btn-nav btn-nav-lang" data-action="toggle-lang">
+            ${this._escape(i18n.t('lang_current'))} / ${this._escape(i18n.t('lang_target'))}
+          </button>
+        </nav>
       </header>
     `;
   }
@@ -794,16 +778,14 @@ export class MuseInviteApp {
     const messageKey = this.state.error?.messageKey || 'err_generic';
     const hint =
       this.state.error?.code === 'not_configured'
-        ? `<p style="margin:8px 0 0 0;font-size:12.5px;color:var(--text-muted);">${this._escape(
+        ? `<p class="muted" style="margin:8px 0 0;font-size:12.5px;">${this._escape(
             i18n.t('err_backend_hint')
           )}</p>`
         : '';
     return `
-      <div role="alert" style="padding:8px 0;">
-        <p style="margin:0 0 6px 0;font-weight:700;color:var(--danger-text);">
-          ${this._escape(i18n.t('load_error_title'))}
-        </p>
-        <p style="margin:0 0 12px 0;font-size:13px;color:var(--text-secondary);">
+      <div class="q-empty" role="alert">
+        <p>${this._escape(i18n.t('load_error_title'))}</p>
+        <p class="muted" style="margin:0 0 12px;font-weight:400;font-size:13px;">
           ${this._escape(i18n.t(messageKey))}
         </p>
         ${hint}
@@ -814,17 +796,19 @@ export class MuseInviteApp {
     `;
   }
 
-  _renderSkeletonCard(lines = 4) {
+  _renderSkeletonCard() {
     return `
-      <div class="meta-card" style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-        ${Array.from({ length: lines })
-          .map(
-            (_, idx) =>
-              `<div class="skeleton" style="height:${idx === 0 ? 18 : 12}px;width:${
-                idx === 0 ? 55 : 85 - idx * 8
-              }%;"></div>`
-          )
-          .join('')}
+      <div class="q-row">
+        <div class="q-left">
+          <span class="skeleton" style="width:34px;height:14px;"></span>
+          <div style="flex:1;min-width:0;">
+            <div class="skeleton" style="width:45%;height:18px;margin-bottom:7px;"></div>
+            <div class="skeleton" style="width:30%;height:12px;"></div>
+          </div>
+        </div>
+        <div class="q-right">
+          <span class="skeleton" style="width:76px;height:32px;border-radius:999px;"></span>
+        </div>
       </div>
     `;
   }
@@ -833,16 +817,26 @@ export class MuseInviteApp {
     const el = document.getElementById('hero-mount');
     if (!el) return;
 
+    const intro = `
+      <div class="hero-intro">
+        <h1>${this._escape(i18n.t('pool_title'))}</h1>
+        <p>${this._escape(i18n.t('pool_subtitle'))}</p>
+      </div>
+    `;
+
     if (this.state.loading) {
       el.innerHTML = `
-        <section id="section-hero" class="meta-card" style="padding:24px;margin-bottom:16px;">
-          <div style="max-width:480px;margin:0 auto;text-align:center;">
-            <div class="skeleton" style="height:22px;width:45%;margin:0 auto 12px;"></div>
-            <div class="skeleton" style="height:64px;width:100%;margin-bottom:12px;"></div>
-            <div class="skeleton" style="height:14px;width:60%;margin:0 auto;"></div>
-            <p style="margin:16px 0 0 0;font-size:13px;color:var(--text-muted);">
-              ${this._escape(i18n.t('loading'))}
-            </p>
+        ${intro}
+        <section id="section-hero" class="pass-card">
+          <div class="pass-top">
+            <div class="pass-meta">
+              <span class="skeleton" style="width:88px;height:26px;border-radius:999px;"></span>
+              <span class="skeleton" style="width:74px;height:26px;border-radius:999px;"></span>
+            </div>
+            <div class="code-display">
+              <div class="skeleton" style="width:55%;height:44px;margin:0 auto;"></div>
+            </div>
+            <div class="skeleton" style="width:100%;height:6px;"></div>
           </div>
         </section>
       `;
@@ -851,10 +845,9 @@ export class MuseInviteApp {
 
     if (this.state.error) {
       el.innerHTML = `
-        <section id="section-hero" class="meta-card" style="padding:24px;margin-bottom:16px;">
-          <div style="max-width:520px;margin:0 auto;">
-            ${this._renderLoadErrorCard()}
-          </div>
+        ${intro}
+        <section id="section-hero" class="pass-card" style="padding:20px;">
+          ${this._renderLoadErrorCard()}
         </section>
       `;
       return;
@@ -867,16 +860,10 @@ export class MuseInviteApp {
 
     if (!spotlight) {
       el.innerHTML = `
-        <section id="section-hero" class="meta-card" style="padding:28px 20px;margin-bottom:16px;text-align:center;">
-          <p style="margin:0 0 12px 0;font-weight:600;color:var(--text-secondary);">
-            ${this._escape(i18n.t('pool_empty'))}
-          </p>
-          <button
-            type="button"
-            class="btn btn-primary"
-            data-action="scroll-section"
-            data-target="section-publish"
-          >
+        ${intro}
+        <section id="section-hero" class="pass-card" style="padding:36px 20px;text-align:center;">
+          <p style="margin:0 0 14px;font-weight:600;color:var(--muted);">${this._escape(i18n.t('pool_empty'))}</p>
+          <button type="button" class="btn-copy" data-action="scroll-section" data-target="section-publish">
             ${this._escape(i18n.t('pool_empty_cta'))}
           </button>
         </section>
@@ -885,90 +872,57 @@ export class MuseInviteApp {
     }
 
     const pct = Math.min(100, Math.max(0, Math.round((spotlight.remaining_spots / spotlight.total_spots) * 100)));
+    const rank = spotlight.queue_rank || 1;
 
     el.innerHTML = `
-      <section id="section-hero" class="meta-card" style="padding:24px;margin-bottom:16px;text-align:center;">
-        <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-          <h1 style="margin:0;font-size:20px;font-weight:800;color:var(--text-primary);">
-            ${this._escape(i18n.t('pool_title'))}
-          </h1>
+      ${intro}
+      <section id="section-hero" class="pass-card">
+        <div class="pass-top">
+          <div class="pass-meta">
+            <span class="badge-live"><span class="dot-live"></span>${this._escape(i18n.t('pool_badge_available'))}</span>
+            <span class="rank-chip">${this._escape(i18n.t('queue_prefix'))}${rank}</span>
+          </div>
+          <div class="code-display">
+            <div class="code-str">${this._escape(spotlight.code)}</div>
+          </div>
+          <div class="quota-row">
+            <span>${this._escape(i18n.t('pool_quota_label'))}</span>
+            <span>${this._escape(
+              i18n.t('pool_quota_value', {
+                remaining: spotlight.remaining_spots,
+                total: spotlight.total_spots
+              })
+            )}</span>
+          </div>
+          <div class="quota-bar"><div class="quota-fill" style="width:${pct}%;"></div></div>
         </div>
-        <p style="margin:0 0 16px 0;font-size:13.5px;color:var(--text-secondary);">
-          ${this._escape(i18n.t('pool_subtitle'))}
-        </p>
 
-        <div style="max-width:480px;margin:0 auto;">
-          <div class="spotlight-code-display" style="font-size:28px;padding:16px;margin-bottom:10px;">
-            ${this._escape(spotlight.code)}
-          </div>
+        <div class="pass-divider"><div class="pass-dash"></div></div>
 
-          <div style="display:flex;align-items:center;justify-content:space-between;font-size:13px;margin-bottom:6px;">
-            <span style="color:var(--status-available-text);font-weight:700;">
-              ● ${this._escape(i18n.t('status_available'))}
-            </span>
-            <span style="color:var(--text-secondary);font-weight:600;">
-              ${this._escape(
-                i18n.t('pool_spots_left', {
-                  remaining: spotlight.remaining_spots,
-                  total: spotlight.total_spots
-                })
-              )}
-            </span>
-          </div>
-
-          <div class="quota-bar-track" style="margin-bottom:16px;">
-            <div class="quota-bar-fill" style="width:${pct}%;background-color:var(--brand-primary);"></div>
-          </div>
-
-          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;">
-            <button
-              type="button"
-              class="btn btn-primary"
-              style="flex:1.4;min-width:150px;padding:11px 18px;font-size:15px;"
-              data-action="copy-code"
-              data-id="${this._escape(spotlight.id)}"
-            >
-              📋 ${this._escape(isCopied ? i18n.t('pool_btn_copied') : i18n.t('pool_btn_copy'))}
+        <div class="pass-bottom">
+          <div class="pass-actions">
+            <button type="button" class="btn-copy" data-action="copy-code" data-id="${this._escape(spotlight.id)}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              ${this._escape(isCopied ? i18n.t('pool_btn_copied') : i18n.t('pool_btn_copy'))}
             </button>
-            <button
-              type="button"
-              class="btn btn-secondary"
-              style="flex:1;min-width:120px;padding:11px 16px;font-size:15px;"
-              data-action="draw-next-code"
-            >
-              ⏭ ${this._escape(i18n.t('pool_btn_next'))}
+            <button type="button" class="btn-soft" data-action="quick-claim-code" data-id="${this._escape(spotlight.id)}">
+              ${this._escape(i18n.t('pool_btn_claimed'))}
+            </button>
+            <button type="button" class="btn-soft" data-action="draw-next-code">
+              ${this._escape(i18n.t('pool_btn_next'))}
             </button>
           </div>
-
-          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-            <button
-              type="button"
-              class="btn btn-success-soft"
-              style="flex:1;font-size:13px;padding:8px 12px;"
-              data-action="quick-claim-code"
-              data-id="${this._escape(spotlight.id)}"
-            >
-              ✅ ${this._escape(i18n.t('pool_btn_claimed'))}
-            </button>
-            <button
-              type="button"
-              class="btn btn-outline"
-              style="flex:1;font-size:13px;padding:8px 12px;color:var(--text-secondary);"
-              data-action="open-feedback-modal"
-              data-id="${this._escape(spotlight.id)}"
-            >
-              ✉️ ${this._escape(i18n.t('pool_btn_feedback'))}
+          <div class="pass-foot">
+            <span>${this._escape(i18n.t('pool_rule_1'))}</span>
+            <span>${this._escape(i18n.t('pool_rule_2'))}</span>
+            <button type="button" class="link-btn" data-action="open-feedback-modal" data-id="${this._escape(spotlight.id)}">
+              ${this._escape(i18n.t('pool_btn_feedback'))}
             </button>
           </div>
-
-          <p style="margin:10px 0 0 0;font-size:11.5px;color:var(--text-muted);">
-            ${this._escape(i18n.t('limit_hint'))}
-          </p>
         </div>
       </section>
     `;
   }
-
   renderPublishSection() {
     const el = document.getElementById('publish-mount');
     if (!el) return;
@@ -977,59 +931,47 @@ export class MuseInviteApp {
     const errorKeys = [errors.code, errors.remainingSpots, errors.form].filter(Boolean);
 
     el.innerHTML = `
-      <section id="section-publish" class="meta-card" style="padding:18px 20px;margin-bottom:16px;" aria-labelledby="publish-heading">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-          <h2 id="publish-heading" style="margin:0;font-size:16px;font-weight:700;">
-            ➕ ${this._escape(i18n.t('publish_title'))}
-          </h2>
-          <span style="font-size:12px;color:var(--text-muted);">
-            ${this._escape(i18n.t('publish_demo_hint'))}
-          </span>
+      <section id="section-publish" class="share-card" aria-labelledby="publish-heading">
+        <div class="share-head">
+          <h2 id="publish-heading">${this._escape(i18n.t('publish_title'))}</h2>
+          <span>${this._escape(i18n.t('publish_demo_hint'))}</span>
         </div>
-
-        <form id="publish-invite-form" novalidate>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            <div style="flex:1;min-width:200px;">
-              <input
-                id="publish-code-input"
-                type="text"
-                required
-                maxlength="48"
-                aria-label="${this._escape(i18n.t('publish_code_placeholder'))}"
-                class="input-field ${errors.code ? 'has-error' : ''}"
-                placeholder="${this._escape(i18n.t('publish_code_placeholder'))}"
-                value="${this._escape(code)}"
-              />
-            </div>
-
-            <div style="display:flex;align-items:center;gap:6px;">
-              <label for="publish-spots-input" style="font-size:13px;color:var(--text-secondary);font-weight:600;white-space:nowrap;">
-                ${this._escape(i18n.t('publish_spots_label'))}:
-              </label>
-              <input
-                id="publish-spots-input"
-                type="number"
-                min="1"
-                max="30"
-                class="input-field ${errors.remainingSpots ? 'has-error' : ''}"
-                style="width:74px;text-align:center;"
-                value="${this._escape(remainingSpots)}"
-              />
-            </div>
-
-            <button type="submit" class="btn btn-primary" style="padding:10px 18px;" ${submitting ? 'disabled' : ''}>
-              ${this._escape(submitting ? i18n.t('loading') : i18n.t('publish_submit_btn'))}
-            </button>
-          </div>
+        <form id="publish-invite-form" class="share-row" novalidate>
+          <input
+            id="publish-code-input"
+            type="text"
+            required
+            maxlength="6"
+            inputmode="text"
+            autocapitalize="characters"
+            spellcheck="false"
+            aria-label="${this._escape(i18n.t('publish_code_placeholder'))}"
+            class="share-code-inp ${errors.code ? 'has-error' : ''}"
+            placeholder="${this._escape(i18n.t('publish_code_placeholder'))}"
+            value="${this._escape(code)}"
+          />
+          <label class="quota-pill-wrap">
+            <span>${this._escape(i18n.t('publish_spots_label'))}</span>
+            <input
+              id="publish-spots-input"
+              type="number"
+              min="1"
+              max="30"
+              class="quota-pill-inp ${errors.remainingSpots ? 'has-error' : ''}"
+              aria-label="${this._escape(i18n.t('publish_spots_label'))}"
+              value="${this._escape(remainingSpots)}"
+              ${submitting ? 'disabled' : ''}
+            />
+          </label>
+          <button type="submit" class="btn-copy" ${submitting ? 'disabled' : ''}>
+            ${this._escape(submitting ? i18n.t('loading') : i18n.t('publish_submit_btn'))}
+          </button>
         </form>
-
         ${
           errorKeys.length
-            ? `<div role="alert" style="margin-top:8px;font-size:12.5px;color:var(--danger-text);font-weight:600;display:flex;flex-direction:column;gap:2px;">
-                ${errorKeys
-                  .map((key) => `<div>⚠ ${this._escape(i18n.t(key))}</div>`)
-                  .join('')}
-              </div>`
+            ? `<div class="form-error" role="alert">${errorKeys
+                .map((key) => this._escape(i18n.t(key)))
+                .join(' · ')}</div>`
             : ''
         }
       </section>
@@ -1042,44 +984,41 @@ export class MuseInviteApp {
 
     const stats = this.getStats();
     const activeFilter = this.state.statusFilter;
+    const usedCount = (stats.used || 0) + (stats.expired || 0);
 
     const filterTabs = [
       { key: FILTER_STATUS.AVAILABLE, label: i18n.t('filter_available'), count: stats.available },
-      { key: FILTER_STATUS.EXPIRED, label: i18n.t('filter_expired'), count: stats.expired },
-      { key: FILTER_STATUS.USED, label: i18n.t('filter_used'), count: stats.used },
+      { key: FILTER_STATUS.USED, label: i18n.t('filter_used'), count: usedCount },
       { key: FILTER_STATUS.ALL, label: i18n.t('filter_all'), count: stats.total }
     ];
 
     el.innerHTML = `
-      <section id="section-directory" class="meta-card" style="padding:20px;margin-bottom:16px;" aria-labelledby="directory-heading">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
-          <div role="group" aria-label="${this._escape(i18n.t('list_title'))}" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+      <section id="section-directory" aria-label="${this._escape(i18n.t('list_title'))}">
+        <div class="queue-head">
+          <div class="seg" role="group" aria-label="${this._escape(i18n.t('list_title'))}">
             ${filterTabs
               .map((tab) => {
                 const isActive = activeFilter === tab.key;
                 return `
                   <button
                     type="button"
-                    class="btn ${isActive ? 'btn-primary' : 'btn-outline'}"
-                    style="padding:6px 12px;font-size:13px;"
+                    class="seg-btn ${isActive ? 'active' : ''}"
                     data-action="set-filter"
                     data-filter="${tab.key}"
                   >
-                    <span>${this._escape(tab.label)}</span>
-                    <span style="opacity:0.85;font-size:12px;">(${tab.count})</span>
+                    ${this._escape(tab.label)} (${tab.count})
                   </button>
                 `;
               })
               .join('')}
           </div>
 
-          <div style="display:flex;align-items:center;gap:6px;min-width:210px;flex:0.45;">
+          <div class="search-wrap">
             <input
               id="search-input"
               type="search"
               aria-label="${this._escape(i18n.t('search_placeholder'))}"
-              class="input-field"
-              style="padding:7px 12px;font-size:13.5px;"
+              class="search-input"
               placeholder="${this._escape(i18n.t('search_placeholder'))}"
               value="${this._escape(this.state.searchQuery)}"
               autocomplete="off"
@@ -1087,8 +1026,7 @@ export class MuseInviteApp {
             <button
               type="button"
               id="clear-search-btn"
-              class="btn btn-secondary"
-              style="padding:7px 10px;font-size:12.5px;"
+              class="search-clear"
               data-action="clear-search"
               ${this.state.searchQuery ? '' : 'hidden'}
             >
@@ -1110,7 +1048,7 @@ export class MuseInviteApp {
 
     if (this.state.loading) {
       container.innerHTML = `
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(265px,1fr));gap:12px;">
+        <div class="queue-cards">
           ${this._renderSkeletonCard(4)}
           ${this._renderSkeletonCard(4)}
           ${this._renderSkeletonCard(4)}
@@ -1128,8 +1066,8 @@ export class MuseInviteApp {
 
     if (filtered.length === 0) {
       container.innerHTML = `
-        <div style="padding:32px 16px;text-align:center;color:var(--text-secondary);">
-          <p style="margin:0 0 10px 0;font-weight:600;">${this._escape(i18n.t('empty_list'))}</p>
+        <div class="q-empty">
+          <p>${this._escape(i18n.t('empty_list'))}</p>
           <button type="button" class="btn btn-outline" data-action="reset-search-and-filter">
             ${this._escape(i18n.t('empty_reset'))}
           </button>
@@ -1139,7 +1077,7 @@ export class MuseInviteApp {
     }
 
     container.innerHTML = `
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(265px,1fr));gap:12px;">
+      <div class="queue-cards">
         ${filtered.map((item, idx) => this._renderInviteCard(item, idx + 1)).join('')}
       </div>
     `;
@@ -1161,18 +1099,6 @@ export class MuseInviteApp {
       statusBadgeHtml = `<span class="status-badge status-expired">✕ ${this._escape(i18n.t('status_expired'))}</span>`;
     }
 
-    const remainingPct = Math.min(
-      100,
-      Math.max(0, Math.round(((record.remaining_spots || 0) / (record.total_spots || 30)) * 100))
-    );
-    const barColor = isAvailable
-      ? record.remaining_spots <= 5
-        ? 'var(--warning-text)'
-        : 'var(--status-available-text)'
-      : isUsed
-      ? 'var(--text-muted)'
-      : 'var(--status-expired-text)';
-
     const spotsText =
       record.remaining_spots <= 0
         ? i18n.t('card_spots_exhausted', { total: record.total_spots || 30 })
@@ -1182,92 +1108,66 @@ export class MuseInviteApp {
           });
 
     return `
-      <article
-        class="meta-card"
-        style="padding:14px;display:flex;flex-direction:column;gap:10px;border-left:4px solid ${
-          isAvailable ? 'var(--status-available-text)' : isUsed ? 'var(--text-muted)' : 'var(--status-expired-text)'
-        };"
-      >
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-          <div style="display:flex;align-items:center;gap:6px;">
-            ${statusBadgeHtml}
+      <article class="q-row">
+        <div class="q-left">
+          <span class="q-rank">#${displayRank}</span>
+          <div class="q-main">
+            <span class="q-code">${this._escape(record.code)}</span>
+            <div class="q-meta">
+              ${statusBadgeHtml}
+              <span>${this._escape(spotsText)}</span>
+              ${
+                record.is_local_session
+                  ? `<span class="q-own">${this._escape(i18n.t('badge_new'))}</span>`
+                  : ''
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="q-right">
+          <div class="q-actions">
+            <button
+              type="button"
+              class="q-btn"
+              ${isAvailable ? '' : 'disabled'}
+              data-action="copy-code"
+              data-id="${this._escape(record.id)}"
+            >
+              ${this._escape(isCopied ? i18n.t('card_copied') : i18n.t('card_copy'))}
+            </button>
+
             ${
               isAvailable
-                ? `<span style="font-size:11.5px;font-weight:700;color:var(--brand-primary-text);background:var(--brand-primary-soft);padding:2px 6px;border-radius:4px;">
-                    ${this._escape(i18n.t('queue_prefix'))}${displayRank}
-                  </span>`
+                ? `<button
+                    type="button"
+                    class="q-btn q-btn-soft"
+                    data-action="quick-claim-code"
+                    data-id="${this._escape(record.id)}"
+                  >
+                    ${this._escape(i18n.t('card_used_btn'))}
+                  </button>`
                 : ''
             }
+
+            <button
+              type="button"
+              class="q-btn q-btn-ghost"
+              data-action="open-status-modal"
+              data-id="${this._escape(record.id)}"
+            >
+              ${this._escape(i18n.t('card_status_btn'))}
+            </button>
+
+            <button
+              type="button"
+              class="q-btn q-btn-ghost"
+              data-action="open-feedback-modal"
+              data-id="${this._escape(record.id)}"
+            >
+              ${this._escape(i18n.t('card_feedback_btn'))}
+            </button>
           </div>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="font-size:12px;font-weight:600;color:${
-              record.remaining_spots <= 0 ? 'var(--status-expired-text)' : 'var(--text-secondary)'
-            };">
-              ${this._escape(spotsText)}
-            </span>
-            ${
-              record.is_local_session
-                ? `<span style="font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:4px;background:var(--warning-bg);color:var(--warning-text);">
-                    ${this._escape(i18n.t('badge_new'))}
-                  </span>`
-                : ''
-            }
-          </div>
-        </div>
-
-        <div class="code-pill ${isAvailable ? '' : 'is-unavailable'}" style="font-size:16px;padding:8px 10px;">
-          <span>${this._escape(record.code)}</span>
-        </div>
-
-        <div class="quota-bar-track" style="height:5px;">
-          <div class="quota-bar-fill" style="width:${remainingPct}%;background-color:${barColor};"></div>
-        </div>
-
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;">
-          <button
-            type="button"
-            class="btn ${isAvailable ? 'btn-primary' : 'btn-secondary'}"
-            style="flex:1;padding:6px 10px;font-size:13px;"
-            ${isAvailable ? '' : 'disabled'}
-            data-action="copy-code"
-            data-id="${this._escape(record.id)}"
-          >
-            ${this._escape(isCopied ? i18n.t('card_copied') : i18n.t('card_copy'))}
-          </button>
-
-          ${
-            isAvailable
-              ? `<button
-                  type="button"
-                  class="btn btn-success-soft"
-                  style="padding:6px 9px;font-size:12.5px;"
-                  data-action="quick-claim-code"
-                  data-id="${this._escape(record.id)}"
-                >
-                  ${this._escape(i18n.t('card_used_btn'))}
-                </button>`
-              : ''
-          }
-
-          <button
-            type="button"
-            class="btn btn-outline"
-            style="padding:6px 9px;font-size:12.5px;color:var(--text-secondary);"
-            data-action="open-status-modal"
-            data-id="${this._escape(record.id)}"
-          >
-            ${this._escape(i18n.t('card_status_btn'))}
-          </button>
-
-          <button
-            type="button"
-            class="btn btn-outline"
-            style="padding:6px 9px;font-size:12.5px;color:var(--text-secondary);"
-            data-action="open-feedback-modal"
-            data-id="${this._escape(record.id)}"
-          >
-            ${this._escape(i18n.t('card_feedback_btn'))}
-          </button>
         </div>
       </article>
     `;
