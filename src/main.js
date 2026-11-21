@@ -166,6 +166,20 @@ export class MuseInviteApp {
       });
   }
 
+  getAvailablePool() {
+    return this.state.records
+      .filter(
+        (record) =>
+          record.status === INVITE_STATUS.AVAILABLE && record.remaining_spots > 0
+      )
+      .sort((a, b) => {
+        const rankDiff =
+          (a.queue_rank || Number.MAX_SAFE_INTEGER) - (b.queue_rank || Number.MAX_SAFE_INTEGER);
+        if (rankDiff !== 0) return rankDiff;
+        return Date.parse(a.created_at) - Date.parse(b.created_at);
+      });
+  }
+
   pushToast(message, type = 'success') {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
     this.state.toasts.push({ id, message, type });
@@ -872,7 +886,8 @@ export class MuseInviteApp {
     }
 
     const pct = Math.min(100, Math.max(0, Math.round((spotlight.remaining_spots / spotlight.total_spots) * 100)));
-    const rank = spotlight.queue_rank || 1;
+    const availableIndex = this.getAvailablePool().findIndex((item) => item.id === spotlight.id);
+    const rank = availableIndex >= 0 ? availableIndex + 1 : spotlight.queue_rank || 1;
 
     el.innerHTML = `
       ${intro}
@@ -1087,8 +1102,7 @@ export class MuseInviteApp {
     const isAvailable = record.status === INVITE_STATUS.AVAILABLE;
     const isUsed = record.status === INVITE_STATUS.USED;
     const isCopied = this.state.copiedId === record.id;
-    const displayRank =
-      Number.isFinite(record.queue_rank) && record.queue_rank > 0 ? record.queue_rank : queueIndex;
+    const displayRank = queueIndex;
 
     let statusBadgeHtml = '';
     if (isAvailable) {
