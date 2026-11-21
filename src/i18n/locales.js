@@ -22,7 +22,7 @@ export const LOCALES = {
     pool_quota_label: '剩余可用额度',
     pool_quota_value: '{remaining} / {total} 次',
     pool_spots_left: '剩余 {remaining} / {total} 次',
-    pool_btn_copy: '一键复制邀请码',
+    pool_btn_copy: '一键复制',
     pool_btn_copied: '已复制',
     pool_btn_next: '换一个',
     pool_btn_claimed: '已使用 (-1)',
@@ -38,7 +38,7 @@ export const LOCALES = {
     publish_code_placeholder: '输入邀请码 (如 9NF4F6)',
     publish_spots_label: '剩余次数',
     publish_submit_btn: '立即分享',
-    publish_demo_hint: '新码排在队尾 · 每人限分享 1 个、最多使用 2 个码',
+    publish_demo_hint: '新号码排在队尾',
     publish_success: '已入池排队：{code}',
 
     // 校验错误
@@ -162,7 +162,7 @@ export const LOCALES = {
     pool_quota_label: 'Remaining Quota',
     pool_quota_value: '{remaining} / {total} left',
     pool_spots_left: '{remaining} / {total} uses left',
-    pool_btn_copy: 'Copy Invite Code',
+    pool_btn_copy: 'Copy',
     pool_btn_copied: 'Copied',
     pool_btn_next: 'Next',
     pool_btn_claimed: 'Used (-1)',
@@ -178,7 +178,7 @@ export const LOCALES = {
     publish_code_placeholder: 'Enter 6-character code (e.g. 9NF4F6)',
     publish_spots_label: 'Uses left',
     publish_submit_btn: 'Share Code',
-    publish_demo_hint: 'New codes join the tail · 1 share / 2 uses max',
+    publish_demo_hint: 'New codes join the tail',
     publish_success: 'Added to queue: {code}',
 
     // Errors
