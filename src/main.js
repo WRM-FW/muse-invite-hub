@@ -1158,15 +1158,6 @@ export class MuseInviteApp {
             >
               ${this._escape(i18n.t('card_status_btn'))}
             </button>
-
-            <button
-              type="button"
-              class="q-btn q-btn-ghost"
-              data-action="open-feedback-modal"
-              data-id="${this._escape(record.id)}"
-            >
-              ${this._escape(i18n.t('card_feedback_btn'))}
-            </button>
           </div>
         </div>
       </article>
